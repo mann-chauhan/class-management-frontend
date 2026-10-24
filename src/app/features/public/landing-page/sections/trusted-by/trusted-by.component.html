@@ -1,0 +1,39 @@
+<section
+  id="trusted-by"
+  class="community-experiences"
+  aria-labelledby="community-experiences-title"
+>
+  <div class="community-shell">
+    <header class="section-heading">
+      <p class="eyebrow">User Experiences</p>
+      <h2 id="community-experiences-title">What Our Users Say</h2>
+      <p>See how CMS can support clearer, more connected academic workflows.</p>
+      <small>Sample reviews shown for design preview.</small>
+    </header>
+
+    <div class="testimonial-grid" aria-label="Sample user reviews">
+      @for (testimonial of testimonials; track testimonial.id) {
+        <article class="testimonial-card">
+          <header class="testimonial-author">
+            <span class="author-avatar" aria-hidden="true">{{ testimonial.initials }}</span>
+            <cite>
+              <strong>{{ testimonial.authorName }}</strong>
+              <span>{{ testimonial.authorRole }}</span>
+              <small>{{ testimonial.institutionName }}</small>
+            </cite>
+            <span class="sample-label">Sample Review</span>
+          </header>
+
+          <div class="rating" aria-label="Five out of five stars">
+            <span aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+          </div>
+
+          <blockquote>
+            <span class="quote-mark" aria-hidden="true">&ldquo;</span>
+            <p>{{ testimonial.quote }}</p>
+          </blockquote>
+        </article>
+      }
+    </div>
+  </div>
+</section>

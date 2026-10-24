@@ -1,0 +1,272 @@
+<div class="teaching-feature-page">
+  <app-navbar landingSectionPrefix="/" [seamlessTransition]="true" />
+
+  <main id="top">
+    <section class="teaching-hero" aria-labelledby="teaching-feature-title">
+      <div class="page-shell hero-layout">
+        <div class="hero-copy">
+          <p class="eyebrow">Teaching Operations</p>
+          <h1 id="teaching-feature-title">Keep Every Classroom Workflow Connected</h1>
+          <p class="hero-description">
+            Record and review attendance, manage assignments, and organize examinations and marks
+            through one connected platform.
+          </p>
+
+          <ul class="feature-indicators" aria-label="Teaching Operations capabilities">
+            <li>
+              <span class="indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M5 4h14v16H5zM8 2v4m8-4v4M5 9h14" />
+                  <path d="m8.5 14 2 2 5-5" />
+                </svg>
+              </span>
+              Attendance
+            </li>
+            <li>
+              <span class="indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M7 4h10l3 3v13H4V4h3zM8 11h8M8 15h6" />
+                  <path d="M15 4v4h5" />
+                </svg>
+              </span>
+              Assignments
+            </li>
+            <li>
+              <span class="indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M4 5h16v14H4zM8 9h8M8 13h5" />
+                  <path d="m15 16 1.5 1.5L20 14" />
+                </svg>
+              </span>
+              Exams &amp; Marks
+            </li>
+          </ul>
+        </div>
+
+        <div
+          class="hero-dashboard"
+          role="img"
+          aria-label="Illustrative Classroom Overview showing attendance, assignment submissions, examinations and marks"
+        >
+          <div class="hero-dashboard-shell">
+            <header class="hero-dashboard-header">
+              <div class="hero-dashboard-title">
+                <span class="classroom-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span><strong>Classroom Overview</strong><small>Daily teaching workspace</small></span>
+              </div>
+              <span class="workspace-status"><i aria-hidden="true"></i>Ready</span>
+            </header>
+
+            <div class="hero-context">
+              <span><small>Class</small><strong>Standard 8-A</strong></span>
+              <span><small>Academic Year</small><strong>2026&ndash;27</strong></span>
+              <span><small>Students</small><strong>32</strong></span>
+            </div>
+
+            <div class="hero-metrics">
+              <article><span>Total</span><strong>32</strong><small>Students</small></article>
+              <article class="metric-present"><span>Present</span><strong>28</strong><small>87.5%</small></article>
+              <article class="metric-absent"><span>Absent</span><strong>4</strong><small>Today</small></article>
+            </div>
+
+            <div class="hero-workflow-grid">
+              <article class="hero-attendance-card">
+                <header><span>Attendance Snapshot</span><b>Today</b></header>
+                <div class="mini-ring" aria-hidden="true"><strong>87.5%</strong></div>
+                <div class="mini-legend"><span><i></i>28 Present</span><span><i></i>4 Absent</span></div>
+              </article>
+
+              <div class="hero-side-stack">
+                <article class="hero-assignment-card">
+                  <header><span>Assignment Progress</span><b>Open</b></header>
+                  <strong>18 <small>/ 24 submitted</small></strong>
+                  <div class="mini-progress" aria-hidden="true"><span></span></div>
+                  <p>Mathematics &middot; Chapter 4 Worksheet</p>
+                </article>
+                <article class="hero-exam-card">
+                  <header><span>Exams &amp; Marks</span><b>Published</b></header>
+                  <div><span><small>Unit Test 2</small><strong>Mathematics</strong></span><em>42 / 50</em></div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="teaching-showcase" aria-labelledby="connected-teaching-title">
+      <div class="page-shell">
+        <header class="section-heading">
+          <p class="eyebrow">Connected Teaching Workflows</p>
+          <h2 id="connected-teaching-title">One Connected Teaching Workspace</h2>
+          <p>
+            Explore how attendance, assignments, examinations and marks come together to support
+            everyday classroom operations.
+          </p>
+        </header>
+
+        <div class="operations-dashboard">
+          <header class="dashboard-header">
+            <div class="dashboard-identity">
+              <span class="window-controls" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span><strong>Teaching Operations</strong><small>Classroom workflow workspace</small></span>
+            </div>
+          </header>
+
+          <div class="dashboard-tabs" role="tablist" aria-label="Teaching Operations preview">
+            @for (tab of tabs; track tab.id; let index = $index) {
+              <button
+                type="button"
+                role="tab"
+                [id]="'teaching-tab-' + tab.id"
+                [attr.aria-selected]="activePreview() === tab.id"
+                [attr.aria-controls]="'teaching-panel-' + tab.id"
+                [attr.tabindex]="activePreview() === tab.id ? 0 : -1"
+                [class.active]="activePreview() === tab.id"
+                (click)="selectPreview(tab.id)"
+                (keydown)="handleTabKeydown($event, index)"
+              >
+                <span class="tab-marker" aria-hidden="true"></span>
+                {{ tab.label }}
+              </button>
+            }
+          </div>
+
+          <div class="dashboard-canvas">
+            @if (activePreview() === 'attendance') {
+              <div
+                id="teaching-panel-attendance"
+                class="dashboard-view attendance-view"
+                role="tabpanel"
+                aria-labelledby="teaching-tab-attendance"
+              >
+                <div class="view-context">
+                  <div><span class="context-icon">8A</span><span><small>Class &amp; Section</small><strong>Standard 8-A</strong></span></div>
+                  <span><small>Academic Year</small><strong>2026&ndash;27</strong></span>
+                  <span><small>Register</small><strong>Daily Attendance</strong></span>
+                </div>
+
+                <div class="attendance-metrics">
+                  <article><span>Total Students</span><strong>32</strong><small>Class register</small></article>
+                  <article class="present-metric"><span>Present</span><strong>28</strong><small>Recorded today</small></article>
+                  <article class="absent-metric"><span>Absent</span><strong>4</strong><small>Recorded today</small></article>
+                </div>
+
+                <div class="attendance-workspace">
+                  <article class="register-panel">
+                    <div class="panel-heading"><span><strong>Attendance Register</strong><small>Illustrative student records</small></span><b>Standard 8-A</b></div>
+                    <div class="data-table attendance-table" role="table" aria-label="Illustrative attendance register">
+                      <div class="data-row data-head" role="row"><span>Student</span><span>Roll</span><span>Status</span></div>
+                      <div class="data-row" role="row"><span data-label="Student"><i>AP</i><b>Aarav Patel</b></span><span data-label="Roll">08</span><span data-label="Status"><em class="status present">Present</em></span></div>
+                      <div class="data-row" role="row"><span data-label="Student"><i class="violet">MK</i><b>Mira Kapoor</b></span><span data-label="Roll">12</span><span data-label="Status"><em class="status present">Present</em></span></div>
+                      <div class="data-row" role="row"><span data-label="Student"><i class="cyan">RD</i><b>Rehan Das</b></span><span data-label="Roll">19</span><span data-label="Status"><em class="status absent">Absent</em></span></div>
+                      <div class="data-row" role="row"><span data-label="Student"><i class="amber">SI</i><b>Sana Iyer</b></span><span data-label="Roll">24</span><span data-label="Status"><em class="status present">Present</em></span></div>
+                    </div>
+                  </article>
+
+                  <aside class="distribution-panel">
+                    <span class="panel-label">Attendance Distribution</span>
+                    <div class="attendance-ring" role="img" aria-label="87.5 percent present"><div><strong>87.5%</strong><small>Present</small></div></div>
+                    <div class="distribution-stats"><span><i class="present-dot"></i><b>28</b> Present</span><span><i class="absent-dot"></i><b>4</b> Absent</span></div>
+                    <p>28 present and 4 absent from a class total of 32 students.</p>
+                  </aside>
+                </div>
+              </div>
+            } @else if (activePreview() === 'assignments') {
+              <div
+                id="teaching-panel-assignments"
+                class="dashboard-view assignments-view"
+                role="tabpanel"
+                aria-labelledby="teaching-tab-assignments"
+              >
+                <div class="assignment-summary" aria-label="Selected assignment submission summary">
+                  <article><span>Selected Assignment</span><strong>Chapter 4 Worksheet</strong><small>Mathematics &middot; Standard 8-A</small></article>
+                  <article><strong>24 expected</strong><span>Class submissions</span></article>
+                  <article class="submitted-card"><strong>18 submitted</strong><span>Received</span></article>
+                  <article class="pending-card"><strong>6 pending</strong><span>Awaiting submission</span></article>
+                </div>
+
+                <div class="assignment-workspace">
+                  <article class="assignment-list-panel">
+                    <div class="panel-heading"><span><strong>Assignment Workspace</strong><small>Illustrative class assignments</small></span><b>3 Subjects</b></div>
+                    <div class="assignment-items">
+                      <div class="assignment-item">
+                        <span class="subject-token math">MA</span>
+                        <div><strong>Chapter 4 Worksheet</strong><small>Mathematics &middot; Due 21 Oct</small><div class="progress-track"><span style="width: 75%"></span></div></div>
+                        <span><b>18 / 24</b><em class="status open">Open</em></span>
+                      </div>
+                      <div class="assignment-item">
+                        <span class="subject-token science">SC</span>
+                        <div><strong>Plant Systems Project</strong><small>Science &middot; Due 24 Oct</small><div class="progress-track"><span style="width: 50%"></span></div></div>
+                        <span><b>12 / 24</b><em class="status review">In Review</em></span>
+                      </div>
+                      <div class="assignment-item">
+                        <span class="subject-token english">EN</span>
+                        <div><strong>Reading Response</strong><small>English &middot; Closed</small><div class="progress-track"><span style="width: 100%"></span></div></div>
+                        <span><b>24 / 24</b><em class="status complete">Submitted</em></span>
+                      </div>
+                    </div>
+                  </article>
+
+                  <aside class="submission-panel">
+                    <span class="panel-label">Selected Submission Progress</span>
+                    <strong>75%</strong>
+                    <div class="large-progress" role="progressbar" aria-label="18 of 24 submissions received" aria-valuemin="0" aria-valuemax="24" aria-valuenow="18"><span></span></div>
+                    <dl><div><dt>Submitted</dt><dd>18</dd></div><div><dt>Pending</dt><dd>6</dd></div><div><dt>Expected</dt><dd>24</dd></div></dl>
+                    <p>Submission figures are for the selected Mathematics assignment.</p>
+                  </aside>
+                </div>
+              </div>
+            } @else {
+              <div
+                id="teaching-panel-exams"
+                class="dashboard-view exams-view"
+                role="tabpanel"
+                aria-labelledby="teaching-tab-exams"
+              >
+                <div class="exam-context">
+                  <div><span class="exam-symbol">UT</span><span><small>Examination</small><strong>Unit Test 2</strong></span></div>
+                  <span><small>Class</small><strong>Standard 8-A</strong></span>
+                  <span><small>Subject</small><strong>Mathematics</strong></span>
+                  <span><small>Maximum Marks</small><strong>50</strong></span>
+                </div>
+
+                <div class="exam-workspace">
+                  <article class="marks-panel">
+                    <div class="panel-heading"><span><strong>Marks Register</strong><small>Illustrative student marks</small></span><b>Unit Test 2</b></div>
+                    <div class="data-table marks-register" role="table" aria-label="Illustrative Mathematics marks register">
+                      <div class="data-row data-head"><span>Student</span><span>Marks</span><span>State</span></div>
+                      <div class="data-row"><span data-label="Student"><i>AP</i><b>Aarav Patel</b></span><span data-label="Marks"><strong>42 / 50</strong></span><span data-label="State"><em class="status recorded">Recorded</em></span></div>
+                      <div class="data-row"><span data-label="Student"><i class="violet">MK</i><b>Mira Kapoor</b></span><span data-label="Marks"><strong>38 / 50</strong></span><span data-label="State"><em class="status recorded">Recorded</em></span></div>
+                      <div class="data-row"><span data-label="Student"><i class="cyan">RD</i><b>Rehan Das</b></span><span data-label="Marks"><strong>45 / 50</strong></span><span data-label="State"><em class="status recorded">Recorded</em></span></div>
+                      <div class="data-row"><span data-label="Student"><i class="amber">SI</i><b>Sana Iyer</b></span><span data-label="Marks"><strong>&mdash;</strong></span><span data-label="State"><em class="status pending">Pending</em></span></div>
+                    </div>
+                  </article>
+
+                  <aside class="subject-performance">
+                    <span class="panel-label">Subject Marks Overview</span>
+                    <p>Illustrative recorded average out of 50.</p>
+                    <div class="subject-bar"><span><b>Mathematics</b><em>41 / 50</em></span><div><i style="width: 82%"></i></div></div>
+                    <div class="subject-bar science-bar"><span><b>Science</b><em>39 / 50</em></span><div><i style="width: 78%"></i></div></div>
+                    <div class="subject-bar english-bar"><span><b>English</b><em>44 / 50</em></span><div><i style="width: 88%"></i></div></div>
+                    <div class="marks-state"><span><i></i><strong>3</strong> Recorded</span><span><i></i><strong>1</strong> Pending</span></div>
+                  </aside>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="feature-explanations" aria-label="Teaching Operations capabilities">
+          <article><span>01</span><div><h3>Attendance Management</h3><p>Record and review attendance through organized class-based workflows.</p></div></article>
+          <article><span>02</span><div><h3>Assignment Management</h3><p>Manage assignments and review their associated submission information.</p></div></article>
+          <article><span>03</span><div><h3>Exams &amp; Marks</h3><p>Organize examinations and enter or review marks.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <app-book-demo />
+  </main>
+
+  <app-footer landingSectionPrefix="/" />
+</div>

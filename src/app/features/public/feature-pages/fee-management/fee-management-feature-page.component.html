@@ -1,0 +1,201 @@
+<div class="fee-feature-page">
+  <app-navbar landingSectionPrefix="/" [seamlessTransition]="true" />
+
+  <main id="top">
+    <section class="fee-hero" aria-labelledby="fee-feature-title">
+      <div class="page-shell hero-layout">
+        <div class="hero-copy">
+          <p class="eyebrow">Fee Management</p>
+          <h1 id="fee-feature-title">Bring Clarity to Every Fee Workflow</h1>
+          <p class="hero-description">
+            Configure fee structures, manage student fee records, record payments, and access
+            receipts from one organized workspace.
+          </p>
+
+          <ul class="feature-indicators" aria-label="Fee Management capabilities">
+            <li>
+              <span class="indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false"><path d="M4 6h16v13H4zM8 3v6m8-6v6M4 10h16" /><path d="M8 14h3m2 0h3" /></svg>
+              </span>
+              Fee Structures
+            </li>
+            <li>
+              <span class="indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false"><path d="M6 3h12v18H6zM9 8h6M9 12h6M9 16h3" /></svg>
+              </span>
+              Student Fee Records
+            </li>
+            <li>
+              <span class="indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false"><path d="M5 4h14v16H5zM8 8h8M8 12h5" /><path d="m13 16 1.5 1.5L18 14" /></svg>
+              </span>
+              Payments &amp; Receipts
+            </li>
+          </ul>
+        </div>
+
+        <div
+          class="hero-dashboard"
+          role="img"
+          aria-label="Illustrative fee overview for academic year 2026–27 with ₹12,50,000 total fees, ₹9,25,000 collected and ₹3,25,000 outstanding"
+        >
+          <div class="hero-dashboard-shell">
+            <header class="hero-dashboard-header">
+              <div class="hero-dashboard-title">
+                <span class="finance-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span><strong>Fee Overview</strong><small>Academic Year 2026&ndash;27</small></span>
+              </div>
+              <span class="workspace-status"><i aria-hidden="true"></i>Current</span>
+            </header>
+
+            <div class="hero-metrics">
+              <article><span>Total Fees</span><strong>₹12,50,000</strong><small>Configured amount</small></article>
+              <article class="metric-collected"><span>Collected</span><strong>₹9,25,000</strong><small>Recorded payments</small></article>
+              <article class="metric-outstanding"><span>Outstanding</span><strong>₹3,25,000</strong><small>Remaining balance</small></article>
+            </div>
+
+            <section class="hero-progress-card" aria-label="Collection progress">
+              <header><span><strong>Collection Progress</strong><small>Illustrative institution summary</small></span><b>74%</b></header>
+              <div class="collection-track" role="progressbar" aria-label="74 percent collected" aria-valuemin="0" aria-valuemax="100" aria-valuenow="74"><span></span></div>
+              <footer><span>₹9,25,000 collected</span><span>₹3,25,000 outstanding</span></footer>
+            </section>
+
+            <div class="hero-lower-grid">
+              <article class="hero-record-card">
+                <header><span>Student Fee Status</span><b>Sample</b></header>
+                <div><span class="student-token">AP</span><span><strong>Aarav Patel</strong><small>Standard 6-A</small></span><em>Paid</em></div>
+                <dl><div><dt>Total Fee</dt><dd>₹18,500</dd></div><div><dt>Paid</dt><dd>₹18,500</dd></div></dl>
+              </article>
+              <article class="hero-receipt-card">
+                <header><span class="receipt-symbol" aria-hidden="true">₹</span><span><small>Payment Receipt</small><strong>RCP-2026-0148</strong></span></header>
+                <div><span>Recorded Amount</span><strong>₹8,500</strong></div>
+                <footer><span>20 Oct 2026</span><b>Recorded</b></footer>
+              </article>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="fee-showcase" aria-labelledby="connected-fee-title">
+      <div class="page-shell">
+        <header class="section-heading">
+          <p class="eyebrow">Connected Fee Operations</p>
+          <h2 id="connected-fee-title">One Connected Fee Management Workspace</h2>
+          <p>
+            Explore how fee structures, student fee records, payments and receipts work together
+            in one organized management system.
+          </p>
+        </header>
+
+        <div class="operations-dashboard">
+          <header class="dashboard-header">
+            <div class="dashboard-identity">
+              <span class="window-controls" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span><strong>Fee Management</strong><small>Connected financial records workspace</small></span>
+            </div>
+            <span class="sample-note"><i aria-hidden="true"></i>Illustrative sample data</span>
+          </header>
+
+          <div class="dashboard-tabs" role="tablist" aria-label="Fee Management preview">
+            @for (tab of tabs; track tab.id; let index = $index) {
+              <button
+                type="button"
+                role="tab"
+                [id]="'fee-tab-' + tab.id"
+                [attr.aria-selected]="activePreview() === tab.id"
+                [attr.aria-controls]="'fee-panel-' + tab.id"
+                [attr.tabindex]="activePreview() === tab.id ? 0 : -1"
+                [class.active]="activePreview() === tab.id"
+                (click)="selectPreview(tab.id)"
+                (keydown)="handleTabKeydown($event, index)"
+              >
+                <span class="tab-marker" aria-hidden="true"></span>
+                {{ tab.label }}
+              </button>
+            }
+          </div>
+
+          <div class="dashboard-canvas">
+            @if (activePreview() === 'structures') {
+              <div id="fee-panel-structures" class="dashboard-view structures-view" role="tabpanel" aria-labelledby="fee-tab-structures">
+                <div class="view-summary">
+                  <div><span class="context-icon">₹</span><span><small>Academic Year</small><strong>2026&ndash;27</strong></span></div>
+                  <span><small>Configured Structures</small><strong>3 Classes</strong></span>
+                  <span><small>Selected Class</small><strong>Standard 6</strong></span>
+                </div>
+
+                <div class="structures-workspace">
+                  <article class="surface-panel structure-list-panel">
+                    <div class="panel-heading"><span><strong>Class Fee Structures</strong><small>Illustrative configured amounts</small></span><b>Current Year</b></div>
+                    <div class="structure-items">
+                      <div class="structure-item selected"><span class="class-token">06</span><span><strong>Standard 6</strong><small>Academic Year 2026&ndash;27</small></span><span><b>₹18,500</b><em>Active</em></span></div>
+                      <div class="structure-item"><span class="class-token cyan">07</span><span><strong>Standard 7</strong><small>Academic Year 2026&ndash;27</small></span><span><b>₹20,500</b><em>Active</em></span></div>
+                      <div class="structure-item"><span class="class-token violet">08</span><span><strong>Standard 8</strong><small>Academic Year 2026&ndash;27</small></span><span><b>₹22,500</b><em>Active</em></span></div>
+                    </div>
+                  </article>
+
+                  <aside class="surface-panel structure-detail-panel">
+                    <span class="panel-label">Selected Structure</span>
+                    <div class="structure-total"><span><small>Standard 6</small><strong>₹18,500</strong></span><em>Active</em></div>
+                    <dl><div><dt>Academic Year</dt><dd>2026&ndash;27</dd></div><div><dt>Class</dt><dd>Standard 6</dd></div><div><dt>Configured Fee</dt><dd>₹18,500</dd></div></dl>
+                    <p>This amount represents the configured class fee structure for the selected academic year.</p>
+                  </aside>
+                </div>
+              </div>
+            } @else if (activePreview() === 'records') {
+              <div id="fee-panel-records" class="dashboard-view records-view" role="tabpanel" aria-labelledby="fee-tab-records">
+                <div class="record-metrics">
+                  <article><span>Sample Records</span><strong>3</strong><small>Illustrative subset</small></article>
+                  <article class="paid-metric"><span>Paid</span><strong>1</strong><small>Balance cleared</small></article>
+                  <article class="balance-metric"><span>Open Balance</span><strong>₹27,000</strong><small>Across shown records</small></article>
+                </div>
+
+                <article class="surface-panel records-panel">
+                  <div class="panel-heading"><span><strong>Student Fee Records</strong><small>Illustrative subset &middot; amounts reconcile per student</small></span><b>2026&ndash;27</b></div>
+                  <div class="fee-table" role="table" aria-label="Illustrative student fee records">
+                    <div class="fee-row fee-head" role="row"><span>Student</span><span>Class</span><span>Total Fee</span><span>Paid</span><span>Remaining</span><span>Status</span></div>
+                    <div class="fee-row" role="row"><span data-label="Student"><i>AP</i><b>Aarav Patel</b></span><span data-label="Class">Standard 6-A</span><span data-label="Total Fee">₹18,500</span><span data-label="Paid">₹18,500</span><span data-label="Remaining">₹0</span><span data-label="Status"><em class="status paid">Paid</em></span></div>
+                    <div class="fee-row" role="row"><span data-label="Student"><i class="violet">MK</i><b>Mira Kapoor</b></span><span data-label="Class">Standard 6-B</span><span data-label="Total Fee">₹18,500</span><span data-label="Paid">₹12,000</span><span data-label="Remaining">₹6,500</span><span data-label="Status"><em class="status partial">Partial</em></span></div>
+                    <div class="fee-row" role="row"><span data-label="Student"><i class="cyan">RD</i><b>Rehan Das</b></span><span data-label="Class">Standard 7-A</span><span data-label="Total Fee">₹20,500</span><span data-label="Paid">₹0</span><span data-label="Remaining">₹20,500</span><span data-label="Status"><em class="status pending">Pending</em></span></div>
+                  </div>
+                </article>
+              </div>
+            } @else {
+              <div id="fee-panel-payments" class="dashboard-view payments-view" role="tabpanel" aria-labelledby="fee-tab-payments">
+                <div class="payments-workspace">
+                  <article class="surface-panel payments-panel">
+                    <div class="panel-heading"><span><strong>Recent Recorded Payments</strong><small>Illustrative payment history</small></span><b>3 Records</b></div>
+                    <div class="payment-items">
+                      <div class="payment-item selected"><span class="payment-avatar">AP</span><span><strong>Aarav Patel</strong><small>20 Oct 2026 &middot; Cash</small></span><span><b>₹8,500</b><em>Recorded</em></span></div>
+                      <div class="payment-item"><span class="payment-avatar violet">MK</span><span><strong>Mira Kapoor</strong><small>18 Oct 2026 &middot; UPI</small></span><span><b>₹6,000</b><em>Recorded</em></span></div>
+                      <div class="payment-item"><span class="payment-avatar cyan">AP</span><span><strong>Aarav Patel</strong><small>12 Jul 2026 &middot; Cash</small></span><span><b>₹10,000</b><em>Recorded</em></span></div>
+                    </div>
+                  </article>
+
+                  <aside class="receipt-preview" aria-label="Illustrative receipt RCP-2026-0148">
+                    <header><span class="receipt-logo">CMS</span><span><strong>Payment Receipt</strong><small>RCP-2026-0148</small></span><em>Recorded</em></header>
+                    <div class="receipt-rule"></div>
+                    <dl class="receipt-meta"><div><dt>Student</dt><dd>Aarav Patel</dd></div><div><dt>Academic Year</dt><dd>2026&ndash;27</dd></div><div><dt>Class</dt><dd>Standard 6-A</dd></div><div><dt>Payment Date</dt><dd>20 Oct 2026</dd></div><div><dt>Payment Method</dt><dd>Cash</dd></div></dl>
+                    <div class="receipt-amount"><span><small>Recorded Amount</small><strong>₹8,500</strong></span><b>Payment recorded</b></div>
+                    <footer>Illustrative receipt &middot; sample information only</footer>
+                  </aside>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="feature-explanations" aria-label="Fee Management capabilities">
+          <article><span>01</span><div><h3>Fee Structures</h3><p>Configure and organize fee structures according to supported institutional workflows.</p></div></article>
+          <article><span>02</span><div><h3>Student Fee Records</h3><p>Manage student fee information and track recorded balances.</p></div></article>
+          <article><span>03</span><div><h3>Payments &amp; Receipts</h3><p>Record payments and access corresponding receipts.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <app-book-demo />
+  </main>
+
+  <app-footer landingSectionPrefix="/" />
+</div>

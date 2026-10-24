@@ -1,0 +1,41 @@
+<header class="site-header" [class.seamless-transition]="seamlessTransition()">
+  <a class="brand-link" href="/" aria-label="CMS — Class Management System">
+    <img
+      class="brand-logo"
+      src="/assets/images/cms_logo.png"
+      width="56"
+      height="56"
+      alt="CMS — Class Management System"
+    />
+  </a>
+
+  <button
+    class="mobile-menu-toggle"
+    type="button"
+    [attr.aria-expanded]="menuOpen()"
+    aria-controls="primary-navigation"
+    [attr.aria-label]="menuOpen() ? 'Close navigation menu' : 'Open navigation menu'"
+    (click)="toggleMenu()"
+  >
+    <span class="menu-toggle-icon" [class.is-open]="menuOpen()" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+  </button>
+
+  <div id="primary-navigation" class="header-content" [class.is-open]="menuOpen()">
+    <div class="header-content-inner">
+      <nav class="primary-nav" aria-label="Main navigation">
+        <a [attr.href]="sectionHref('academic-management')" (click)="closeMenu()">Features</a>
+        <a [attr.href]="sectionHref('institutions')" (click)="closeMenu()">Solutions</a>
+        <a [attr.href]="sectionHref('access-control')" (click)="closeMenu()">About</a>
+      </nav>
+
+      <div class="header-actions">
+        <a class="sign-in-link" href="/login" (click)="closeMenu()">Login</a>
+        <a class="demo-link" href="#book-a-demo" (click)="closeMenu()">Book a Demo</a>
+      </div>
+    </div>
+  </div>
+</header>

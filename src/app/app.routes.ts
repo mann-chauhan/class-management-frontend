@@ -7,6 +7,7 @@ import { roleGuard } from './core/guards/role.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
 import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
+import { LandingPageComponent } from './features/public/landing-page/landing-page.component';
 
 // LAYOUT
 import { AppLayoutComponent } from './layouts/app-layout/app-layout.component';
@@ -100,6 +101,33 @@ export const routes: Routes = [
   // =========================================================
   // PUBLIC
   // =========================================================
+
+  {
+    path: '',
+    component: LandingPageComponent,
+    pathMatch: 'full'
+  },
+
+  {
+    path: 'features/academic-management',
+    loadComponent: () =>
+      import('./features/public/feature-pages/academic-management/academic-management-feature-page.component')
+        .then(m => m.AcademicManagementFeaturePageComponent)
+  },
+
+  {
+    path: 'features/teaching-operations',
+    loadComponent: () =>
+      import('./features/public/feature-pages/teaching-operations/teaching-operations-feature-page.component')
+        .then(m => m.TeachingOperationsFeaturePageComponent)
+  },
+
+  {
+    path: 'features/fee-management',
+    loadComponent: () =>
+      import('./features/public/feature-pages/fee-management/fee-management-feature-page.component')
+        .then(m => m.FeeManagementFeaturePageComponent)
+  },
 
   {
     path: 'login',
@@ -729,16 +757,6 @@ export const routes: Routes = [
         data: { roles: ['STUDENT'] }
       }
     ]
-  },
-
-  // =========================================================
-  // DEFAULT
-  // =========================================================
-
-  {
-    path: '',
-    redirectTo: 'login',
-    pathMatch: 'full'
   },
 
   // =========================================================

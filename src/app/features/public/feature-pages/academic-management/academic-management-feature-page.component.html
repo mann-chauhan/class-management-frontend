@@ -1,0 +1,421 @@
+<div class="academic-feature-page">
+  <app-navbar landingSectionPrefix="/" [seamlessTransition]="true" />
+
+  <main id="top">
+    <section class="academic-hero" aria-labelledby="academic-feature-title">
+      <div class="page-shell hero-layout">
+        <div class="hero-copy">
+          <p class="eyebrow">Academic Management</p>
+          <h1 id="academic-feature-title">Bring Structure to Every Academic Workflow</h1>
+          <p class="hero-description">
+            Organize academic years, classes, sections and subjects while keeping student and
+            teacher records connected in one structured workspace.
+          </p>
+
+          <ul class="feature-indicators" aria-label="Academic Management capabilities">
+            <li>
+              <span class="indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <rect x="4" y="5" width="16" height="15" rx="2" />
+                  <path d="M8 3v4m8-4v4M4 9h16" />
+                </svg>
+              </span>
+              Academic Years
+            </li>
+            <li>
+              <span class="indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M4 6.5h6v5H4zM14 6.5h6v5h-6zM9 15.5h6v5H9z" />
+                  <path d="M7 11.5v2h10v-2M12 13.5v2" />
+                </svg>
+              </span>
+              Classes &amp; Sections
+            </li>
+            <li>
+              <span class="indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <circle cx="8" cy="8" r="3" />
+                  <circle cx="17" cy="9" r="2.5" />
+                  <path
+                    d="M3.5 19c.4-3.5 1.9-5.2 4.5-5.2s4.1 1.7 4.5 5.2M13.5 18.5c.3-2.6 1.5-3.9 3.6-3.9 2 0 3.2 1.3 3.5 3.9"
+                  />
+                </svg>
+              </span>
+              Student &amp; Teacher Records
+            </li>
+          </ul>
+        </div>
+
+        <div
+          class="hero-dashboard"
+          role="img"
+          aria-label="Illustrative Academic Management dashboard showing Academic Year 2026–27 connected to Standard 6, Sections A and B, subjects, student records and teacher assignments"
+        >
+          <div class="hero-dashboard-shell">
+            <header class="hero-dashboard-header">
+              <div class="hero-dashboard-title">
+                <span class="workspace-mark" aria-hidden="true">
+                  <i></i><i></i><i></i><i></i>
+                </span>
+                <span>
+                  <strong>Academic Workspace</strong>
+                </span>
+              </div>
+              <span class="workspace-status"><i aria-hidden="true"></i>Organized</span>
+            </header>
+
+            <div class="hero-dashboard-body">
+              <div class="dashboard-rail" aria-hidden="true">
+                <span class="active"><i></i><i></i><i></i><i></i></span>
+                <span><i></i><i></i></span>
+                <span><i></i><i></i><i></i></span>
+              </div>
+
+              <div class="hero-dashboard-content">
+                <section class="workspace-year-card">
+                  <div>
+                    <span>Current Academic Year</span>
+                    <strong>2026&ndash;27</strong>
+                  </div>
+                  <span class="current-year-badge">Current</span>
+                </section>
+
+                <div class="academic-relationship" aria-label="Class and section relationship">
+                  <article>
+                    <span>Class</span>
+                    <strong>Standard 6</strong>
+                    <small>Academic structure</small>
+                  </article>
+                  <article>
+                    <span>Sections</span>
+                    <strong>A &amp; B</strong>
+                    <small>Connected to class</small>
+                  </article>
+                </div>
+
+                <section class="workspace-subjects">
+                  <header>
+                    <span>Connected Subjects</span>
+                    <small>Standard 6</small>
+                  </header>
+                  <div>
+                    <span><i>MA</i>Mathematics</span>
+                    <span><i>SC</i>Science</span>
+                    <span><i>EN</i>English</span>
+                  </div>
+                </section>
+
+                <div class="workspace-records">
+                  <article>
+                    <span class="record-symbol student-symbol" aria-hidden="true">
+                      <i></i><i></i><i></i>
+                    </span>
+                    <span><small>Connected</small><strong>Student Records</strong></span>
+                    <b>Linked</b>
+                  </article>
+                  <article>
+                    <span class="record-symbol teacher-symbol" aria-hidden="true">
+                      <i></i><i></i>
+                    </span>
+                    <span><small>Teacher Management</small><strong>Academic Assignments</strong></span>
+                    <b>Scoped</b>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="academic-details" aria-labelledby="connected-academic-title">
+      <div class="page-shell">
+        <header class="section-heading">
+          <p class="eyebrow">Connected Academic Operations</p>
+          <h2 id="connected-academic-title">One Connected Academic Workspace</h2>
+          <p>
+            Explore how academic structure, student records and teacher information work together to
+            support everyday institutional management.
+          </p>
+        </header>
+
+        <div class="academic-dashboard">
+          <header class="dashboard-header">
+            <div class="dashboard-identity">
+              <span class="window-controls" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span>
+                <strong>Academic Management</strong>
+                <small>Structured institutional workspace</small>
+              </span>
+            </div>
+          </header>
+
+          <div class="dashboard-tabs" role="tablist" aria-label="Academic Management preview">
+            @for (tab of tabs; track tab.id; let index = $index) {
+              <button
+                type="button"
+                role="tab"
+                [id]="'academic-tab-' + tab.id"
+                [attr.aria-selected]="activePreview() === tab.id"
+                [attr.aria-controls]="'academic-panel-' + tab.id"
+                [attr.tabindex]="activePreview() === tab.id ? 0 : -1"
+                [class.active]="activePreview() === tab.id"
+                (click)="selectPreview(tab.id)"
+                (keydown)="handleTabKeydown($event, index)"
+              >
+                <span class="tab-marker" aria-hidden="true"></span>
+                {{ tab.label }}
+              </button>
+            }
+          </div>
+
+          <div class="dashboard-canvas">
+            @if (activePreview() === 'structure') {
+              <div
+                id="academic-panel-structure"
+                class="dashboard-view structure-view"
+                role="tabpanel"
+                aria-labelledby="academic-tab-structure"
+              >
+                <aside class="workspace-summary">
+                  <span class="panel-label">Active Academic Year</span>
+                  <strong>2026&ndash;27</strong>
+                  <p>One current year connects classes, sections and subjects.</p>
+                  <dl>
+                    <div>
+                      <dt>Classes</dt>
+                      <dd>3</dd>
+                    </div>
+                    <div>
+                      <dt>Sections</dt>
+                      <dd>6</dd>
+                    </div>
+                    <div>
+                      <dt>Subjects</dt>
+                      <dd>9</dd>
+                    </div>
+                  </dl>
+                </aside>
+
+                <div class="structure-workspace">
+                  <div class="hierarchy-path" aria-label="Academic hierarchy">
+                    <article class="hierarchy-node year-node">
+                      <span>Academic Year</span><strong>2026&ndash;27</strong><small>Current</small>
+                    </article>
+                    <span class="path-arrow" aria-hidden="true">&rarr;</span>
+                    <article class="hierarchy-node class-node">
+                      <span>Class</span><strong>Standard 6</strong><small>2 Sections</small>
+                    </article>
+                    <span class="path-arrow" aria-hidden="true">&rarr;</span>
+                    <article class="hierarchy-node section-node">
+                      <span>Section</span><strong>Section A</strong><small>3 Subjects</small>
+                    </article>
+                  </div>
+
+                  <div class="structure-detail-grid">
+                    <article class="sections-panel">
+                      <div class="mini-panel-heading">
+                        <span>Class Sections</span><small>Standard 6</small>
+                      </div>
+                      <div class="section-record active-record">
+                        <span class="record-letter">A</span
+                        ><span><strong>Section A</strong><small>Active section</small></span
+                        ><b>Selected</b>
+                      </div>
+                      <div class="section-record">
+                        <span class="record-letter secondary-letter">B</span
+                        ><span><strong>Section B</strong><small>Active section</small></span
+                        ><b>View</b>
+                      </div>
+                    </article>
+
+                    <article class="subjects-panel">
+                      <div class="mini-panel-heading">
+                        <span>Connected Subjects</span><small>Section A</small>
+                      </div>
+                      <div class="subject-row">
+                        <span class="subject-code math">MA</span><strong>Mathematics</strong
+                        ><small>Standard 6</small>
+                      </div>
+                      <div class="subject-row">
+                        <span class="subject-code science">SC</span><strong>Science</strong
+                        ><small>Standard 6</small>
+                      </div>
+                      <div class="subject-row">
+                        <span class="subject-code english">EN</span><strong>English</strong
+                        ><small>Standard 6</small>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            } @else if (activePreview() === 'students') {
+              <div
+                id="academic-panel-students"
+                class="dashboard-view students-view"
+                role="tabpanel"
+                aria-labelledby="academic-tab-students"
+              >
+                <div class="records-summary">
+                  <article>
+                    <span>Total Sample Records</span><strong>24</strong
+                    ><small>Across current classes</small>
+                  </article>
+                  <article>
+                    <span>Active Records</span><strong>22</strong
+                    ><small>Connected to placement</small>
+                  </article>
+                  <article>
+                    <span>Academic Year</span><strong>2026&ndash;27</strong
+                    ><small>Current record context</small>
+                  </article>
+                </div>
+
+                <div class="records-panel">
+                  <div class="records-toolbar">
+                    <span
+                      ><strong>Student Records</strong
+                      ><small>Fictional sample information</small></span
+                    >
+                    <span class="record-filter">Standard 6 <i aria-hidden="true"></i></span>
+                  </div>
+                  <div
+                    class="student-records-table"
+                    role="table"
+                    aria-label="Illustrative student records"
+                  >
+                    <div class="table-row table-head" role="row">
+                      <span role="columnheader">Student</span
+                      ><span role="columnheader">Academic Year</span
+                      ><span role="columnheader">Class</span><span role="columnheader">Section</span
+                      ><span role="columnheader">Status</span>
+                    </div>
+                    <div class="table-row" role="row">
+                      <span role="cell" data-label="Student"
+                        ><i class="student-initials">AP</i><b>Aarav Patel</b></span
+                      ><span role="cell" data-label="Academic Year">2026&ndash;27</span
+                      ><span role="cell" data-label="Class">Standard 6</span
+                      ><span role="cell" data-label="Section">A</span
+                      ><span role="cell" data-label="Status"
+                        ><em class="record-status active-status">Active</em></span
+                      >
+                    </div>
+                    <div class="table-row" role="row">
+                      <span role="cell" data-label="Student"
+                        ><i class="student-initials initials-purple">MK</i><b>Mira Kapoor</b></span
+                      ><span role="cell" data-label="Academic Year">2026&ndash;27</span
+                      ><span role="cell" data-label="Class">Standard 6</span
+                      ><span role="cell" data-label="Section">B</span
+                      ><span role="cell" data-label="Status"
+                        ><em class="record-status active-status">Active</em></span
+                      >
+                    </div>
+                    <div class="table-row" role="row">
+                      <span role="cell" data-label="Student"
+                        ><i class="student-initials initials-cyan">RD</i><b>Rehan Das</b></span
+                      ><span role="cell" data-label="Academic Year">2026&ndash;27</span
+                      ><span role="cell" data-label="Class">Standard 7</span
+                      ><span role="cell" data-label="Section">A</span
+                      ><span role="cell" data-label="Status"
+                        ><em class="record-status inactive-status">Inactive</em></span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div
+                id="academic-panel-teachers"
+                class="dashboard-view teachers-view"
+                role="tabpanel"
+                aria-labelledby="academic-tab-teachers"
+              >
+                <aside class="teacher-summary-panel">
+                  <span class="panel-label">Teacher Records</span>
+                  <strong>Academic assignments stay scoped.</strong>
+                  <p>
+                    Fictional records illustrate supported class, section and subject relationships.
+                  </p>
+                  <div class="scope-key">
+                    <span><i class="key-year"></i>Academic Year</span>
+                    <span><i class="key-class"></i>Class &amp; Section</span>
+                    <span><i class="key-subject"></i>Subject</span>
+                  </div>
+                </aside>
+
+                <div class="teacher-record-list">
+                  <article class="teacher-record">
+                    <div class="teacher-identity">
+                      <span>KR</span>
+                      <p><strong>Kavita Rao</strong><small>Teacher record</small></p>
+                      <em>Active</em>
+                    </div>
+                    <div class="assignment-chain">
+                      <span>2026&ndash;27</span><i aria-hidden="true">&rsaquo;</i
+                      ><span>Standard 6</span><i aria-hidden="true">&rsaquo;</i
+                      ><span>Section A</span><i aria-hidden="true">&rsaquo;</i><b>Science</b>
+                    </div>
+                  </article>
+                  <article class="teacher-record">
+                    <div class="teacher-identity">
+                      <span class="avatar-purple">DM</span>
+                      <p><strong>Dev Malhotra</strong><small>Teacher record</small></p>
+                      <em>Active</em>
+                    </div>
+                    <div class="assignment-chain">
+                      <span>2026&ndash;27</span><i aria-hidden="true">&rsaquo;</i
+                      ><span>Standard 6</span><i aria-hidden="true">&rsaquo;</i
+                      ><span>Section B</span><i aria-hidden="true">&rsaquo;</i><b>Mathematics</b>
+                    </div>
+                  </article>
+                  <article class="teacher-record">
+                    <div class="teacher-identity">
+                      <span class="avatar-cyan">FK</span>
+                      <p><strong>Farah Khan</strong><small>Teacher record</small></p>
+                      <em>Active</em>
+                    </div>
+                    <div class="assignment-chain">
+                      <span>2026&ndash;27</span><i aria-hidden="true">&rsaquo;</i
+                      ><span>Standard 7</span><i aria-hidden="true">&rsaquo;</i
+                      ><span>Section A</span><i aria-hidden="true">&rsaquo;</i><b>English</b>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="capability-grid" aria-label="Academic Management capabilities">
+          <article>
+            <span class="capability-number">01</span>
+            <div>
+              <h3>Academic Structure</h3>
+              <p>
+                Organize academic years, classes, sections and subjects within a structured system.
+              </p>
+            </div>
+          </article>
+          <article>
+            <span class="capability-number">02</span>
+            <div>
+              <h3>Student Records</h3>
+              <p>Keep student information organized and connected to relevant academic records.</p>
+            </div>
+          </article>
+          <article>
+            <span class="capability-number">03</span>
+            <div>
+              <h3>Teacher Management</h3>
+              <p>Manage teacher information and supported academic assignments.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <app-book-demo />
+  </main>
+
+  <app-footer landingSectionPrefix="/" />
+</div>

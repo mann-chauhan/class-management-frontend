@@ -1,0 +1,36 @@
+<footer id="footer" class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-columns">
+      <div class="footer-brand">
+        <a class="brand-link" href="#top" aria-label="CMS home">
+          <img
+            class="brand-logo"
+            src="/assets/images/cms_logo.png"
+            width="56"
+            height="56"
+            alt="CMS — Class Management System"
+          />
+        </a>
+        <p class="brand-description">
+          A connected platform for managing academic workflows, students, teachers, attendance, fees
+          and assessments.
+        </p>
+      </div>
+
+      <nav class="footer-column" aria-labelledby="footer-company-title">
+        <h2 id="footer-company-title">Company</h2>
+        <ul>
+          <li><a [attr.href]="sectionHref('academic-management')">Features</a></li>
+          <li><a [attr.href]="sectionHref('institutions')">Solutions</a></li>
+          <li><a [attr.href]="sectionHref('access-control')">About</a></li>
+          <li><a href="/login">Login</a></li>
+        </ul>
+      </nav>
+
+      <div class="footer-column footer-connect">
+        <h2>Connect</h2>
+        <p>Public contact and social links are not configured.</p>
+      </div>
+    </div>
+  </div>
+</footer>

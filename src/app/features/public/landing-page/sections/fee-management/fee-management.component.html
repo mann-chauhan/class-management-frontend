@@ -1,0 +1,77 @@
+<section id="fee-management" class="content-section section-shell section-tinted" aria-labelledby="fees-title">
+  <div class="section-heading">
+    <p class="eyebrow">Fee Management</p>
+    <h2 id="fees-title">Manage Fees and Receipts</h2>
+    <p>Configure fee structures, manage student fees, record payments and access receipts.</p>
+  </div>
+
+  <div class="fees-layout">
+    <figure class="fee-visual" aria-label="Illustrative fee management dashboard and receipt">
+      <div class="fee-dashboard">
+        <header class="dashboard-header">
+          <div class="dashboard-brand">
+            <span class="dashboard-mark" aria-hidden="true"><span></span></span>
+            <span class="dashboard-brand-copy"><strong>Fee Management</strong><small>Academic Year 2026&ndash;27</small></span>
+          </div>
+          <span class="period-badge"><span aria-hidden="true"></span>Current Period</span>
+        </header>
+
+        <section class="fee-metrics" aria-label="Illustrative fee summary">
+          <article class="metric-card total-metric">
+            <span>Total Fees</span>
+            <strong>₹12,50,000</strong>
+            <small>Configured Amount</small>
+          </article>
+          <article class="metric-card collected-metric">
+            <span>Collected</span>
+            <strong>₹9,25,000</strong>
+            <div class="collection-progress" role="img" aria-label="74 percent of illustrative total fees collected"><span></span></div>
+            <small>74% of Total Fees</small>
+          </article>
+          <article class="metric-card outstanding-metric">
+            <span>Outstanding</span>
+            <strong>₹3,25,000</strong>
+            <small>Remaining Balance</small>
+          </article>
+        </section>
+
+        <div class="dashboard-content">
+          <section class="records-panel" aria-labelledby="student-fees-title">
+            <div class="panel-heading">
+              <div><p class="panel-kicker">STUDENT ACCOUNTS</p><h3 id="student-fees-title">Recent Fee Records</h3></div>
+              <span class="record-count">Sample Records</span>
+            </div>
+            <div class="records-table-wrap">
+              <table class="records-table">
+                <caption class="visually-hidden">Illustrative student fee records</caption>
+                <thead><tr><th scope="col">Student</th><th scope="col">Fee Amount</th><th scope="col">Status</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="student-avatar avatar-blue" aria-hidden="true">AP</span><strong>A. Patel</strong></td><td>₹8,500</td><td><span class="status-badge paid-status">Paid</span></td></tr>
+                  <tr><td><span class="student-avatar avatar-violet" aria-hidden="true">MS</span><strong>M. Shah</strong></td><td>₹6,200</td><td><span class="status-badge pending-status">Pending</span></td></tr>
+                  <tr><td><span class="student-avatar avatar-cyan" aria-hidden="true">RD</span><strong>R. Das</strong></td><td>₹7,500</td><td><span class="status-badge paid-status">Paid</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside class="receipt-preview" aria-label="Illustrative payment receipt preview">
+            <div class="receipt-topline"><span class="receipt-icon" aria-hidden="true"><span></span></span><span class="receipt-state">RECORDED</span></div>
+            <p class="receipt-kicker">PAYMENT RECEIPT</p>
+            <h3>Receipt</h3>
+            <p class="receipt-number">RCP-2026-0148</p>
+            <div class="receipt-divider" aria-hidden="true"></div>
+            <dl class="receipt-details">
+              <div><dt>Student</dt><dd>A. Patel</dd></div>
+              <div><dt>Payment</dt><dd>₹8,500</dd></div>
+            </dl>
+            <div class="receipt-confirmation"><span aria-hidden="true">✓</span><strong>Payment Recorded</strong></div>
+          </aside>
+        </div>
+      </div>
+    </figure>
+    <a class="fee-explore-link" routerLink="/features/fee-management">
+      Explore Fee Management
+      <span aria-hidden="true">→</span>
+    </a>
+  </div>
+</section>

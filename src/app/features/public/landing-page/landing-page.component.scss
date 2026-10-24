@@ -1,0 +1,55 @@
+:host {
+  --navy: #152d50;
+  --blue: #2563eb;
+  --blue-dark: #1d4ed8;
+  --white: #ffffff;
+  --pale: #f5f8ff;
+  --pale-blue: #eaf2ff;
+  --text: #152d50;
+  --muted: #52647a;
+  --line: #dce5ef;
+  --landing-content-max-width: 1184px;
+  --landing-page-background:
+    radial-gradient(
+      ellipse 70% 78% at 50% 49%,
+      #ffffff 0%,
+      #ffffff 34%,
+      rgb(245 248 255 / 90%) 66%,
+      transparent 100%
+    ),
+    linear-gradient(
+      90deg,
+      #dce9ff 0%,
+      #eaf2ff 12%,
+      rgb(245 248 255 / 0%) 34%,
+      rgb(245 248 255 / 0%) 66%,
+      #eaf2ff 88%,
+      #dce9ff 100%
+    ),
+    linear-gradient(180deg, #eaf2ff 0%, #f5f8ff 18%, #ffffff 50%, #f5f8ff 82%, #eaf2ff 100%);
+  --landing-section-background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgb(245 248 255 / 8%) 24%,
+    rgb(234 242 255 / 14%) 50%,
+    rgb(245 248 255 / 8%) 76%,
+    transparent 100%
+  );
+
+  display: block;
+  color: var(--text);
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.landing-page {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--pale);
+  background-image: var(--landing-page-background);
+}
