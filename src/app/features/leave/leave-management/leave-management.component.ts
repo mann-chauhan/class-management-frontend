@@ -3,6 +3,7 @@ import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LeaveService } from '../services/leave.service';
+import { formatLeaveAuditTimestamp } from '../utils/leave-date-time';
 import { AcademicYear } from '../../admin/academic/academic-years/academic-year.model';
 import { LeaveDayPortion, LeaveRequest, LeaveRequestFilters, LeaveRequestPayload, LeaveRequestStatus, LeaveSortDirection, LeaveSortField, LeaveSummary } from '../models/leave.model';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -14,6 +15,7 @@ import { PaginationComponent } from '../../../shared/components/pagination/pagin
 
 @Component({ selector: 'app-leave-management', standalone: true, imports: [CommonModule, FormsModule, A11yModule, PageHeaderComponent, StatusBadgeComponent, LoadingComponent, EmptyStateComponent, ErrorStateComponent, PaginationComponent], templateUrl: './leave-management.component.html', styleUrl: './leave-management.component.scss' })
 export class LeaveManagementComponent implements OnInit {
+  readonly formatAuditTimestamp = formatLeaveAuditTimestamp;
   private readonly service = inject(LeaveService); private readonly cdr = inject(ChangeDetectorRef);
   requests: LeaveRequest[] = []; selected: LeaveRequest | null = null; loading = false; submitting = false; cancellingId: number | null = null; yearsLoading = false; summaryLoading = false; listError = ''; formError = ''; detailError = ''; cancelError = ''; yearsError = ''; summaryError = ''; success = ''; detailLoading = false; detailRequestId: number | null = null; detailsOpen = false; private previouslyFocused: HTMLElement | null = null; page = 0; totalPages = 0; totalElements = 0; size = 10; years: AcademicYear[] = []; selectedYearId: number | null = null; summary: LeaveSummary | null = null; private summaryRequestToken = 0; private listRequestSequence = 0; private detailRequestSequence = 0;
   startDate = ''; endDate = ''; totalLeaveDays: number | null = null; dayPortion: LeaveDayPortion = 'FULL_DAY'; reason = '';

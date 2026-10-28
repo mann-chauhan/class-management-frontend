@@ -33,6 +33,7 @@ import { LoadingComponent } from '../../../shared/components/loading/loading.com
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
+import { formatLeaveAuditTimestamp } from '../utils/leave-date-time';
 
 @Component({
   selector: 'app-admin-leave-management',
@@ -52,6 +53,7 @@ import { PaginationComponent } from '../../../shared/components/pagination/pagin
   styleUrl: './admin-leave-management.component.scss',
 })
 export class AdminLeaveManagementComponent implements OnInit {
+  readonly formatAuditTimestamp = formatLeaveAuditTimestamp;
   private readonly service = inject(LeaveService);
   private readonly academicYearService = inject(AcademicYearService);
   private readonly cdr = inject(ChangeDetectorRef);

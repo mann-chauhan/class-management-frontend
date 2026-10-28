@@ -208,7 +208,7 @@
           <p>{{ selected.adminComment }}</p>
         </div> }@if (selected.reviewedAt) { <div class="detail-block">
           <h3>Reviewed</h3>
-          <p>{{ selected.reviewedAt | date:'medium' }}</p>
+          <p>{{ formatAuditTimestamp(selected.reviewedAt) }}</p>
         </div> }
       </div>@if (selected.status === 'PENDING') { <div class="cancel-section">
         <p>You can cancel this request while it is pending.</p><button type="button" class="danger"

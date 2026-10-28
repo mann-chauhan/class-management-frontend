@@ -18,6 +18,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { formatLeaveAuditTimestamp } from '../utils/leave-date-time';
 
 @Component({
   selector: 'app-teacher-leave-review',
@@ -38,6 +39,7 @@ import { ConfirmationDialogComponent } from '../../../shared/components/confirma
   styleUrl: './teacher-leave-review.component.scss'
 })
 export class TeacherLeaveReviewComponent implements OnInit {
+  readonly formatAuditTimestamp = formatLeaveAuditTimestamp;
   private readonly service = inject(LeaveService);
   private readonly permissionService = inject(PermissionService);
   private readonly cdr = inject(ChangeDetectorRef);

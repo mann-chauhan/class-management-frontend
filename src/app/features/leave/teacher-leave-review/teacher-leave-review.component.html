@@ -158,7 +158,7 @@
           event.id) { <li>
             <div class="history-marker" aria-hidden="true"></div>
             <div class="history-entry"><strong>{{ event.eventType }}</strong><span>{{ event.actorType }} · {{
-                event.createdAt | date:'medium' }}</span><small>{{ event.previousStatus || '—' }} → {{ event.newStatus
+                formatAuditTimestamp(event.createdAt) }}</span><small>{{ event.previousStatus || '—' }} → {{ event.newStatus
                 || '—' }}{{ event.comment ? ' · ' + event.comment : '' }}</small></div>
           </li> }</ol> } @else { <p class="muted">No history available.</p> }
       </section>@if (selected.status === 'PENDING' && (canApprove() || canReject())) { <section
