@@ -73,10 +73,12 @@ export class ApiService {
   }
 
   delete<T>(
-    endpoint: string
+    endpoint: string,
+    body?: unknown
   ): Observable<T> {
     return this.http.delete<T>(
-      `${this.baseUrl}${endpoint}`
+      `${this.baseUrl}${endpoint}`,
+      body === undefined ? {} : { body }
     );
   }
 }

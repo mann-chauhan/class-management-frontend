@@ -1,0 +1,116 @@
+<main class="advertisement-settings-page">
+  <header class="page-header">
+    <div class="page-heading">
+      <a class="back-link" routerLink="/admin/advertisements">← Back to Advertisements</a>
+      <h1>Advertisement Settings</h1>
+      <p>Choose which audience dashboards display published advertisements.</p>
+    </div>
+
+    <button
+      type="button"
+      class="primary-button"
+      [disabled]="loading || saving || !settings"
+      (click)="saveSettings()"
+    >
+      {{ saving ? 'Saving...' : 'Save Changes' }}
+    </button>
+  </header>
+
+  @if (loading) {
+    <section class="state-card" role="status" aria-live="polite">
+      <span class="loader" aria-hidden="true"></span>
+      <p>Loading advertisement settings...</p>
+    </section>
+  } @else if (errorMessage) {
+    <section class="alert alert-error" role="alert">
+      <p>{{ errorMessage }}</p>
+      <button type="button" class="secondary-button" (click)="loadSettings()" [disabled]="saving">
+        Retry
+      </button>
+    </section>
+  }
+
+  @if (successMessage) {
+    <section class="alert alert-success" role="status" aria-live="polite">
+      {{ successMessage }}
+    </section>
+  }
+
+  @if (!loading && settings) {
+    <section class="settings-card" aria-labelledby="audience-settings-title" [attr.aria-busy]="saving">
+      <div class="card-header">
+        <div>
+          <h2 id="audience-settings-title">Audience dashboard sections</h2>
+          <p>Disabled sections will not receive advertisements from the audience feed.</p>
+        </div>
+        <span class="version-label">Version {{ settings.version }}</span>
+      </div>
+
+      <div class="toggle-grid">
+        <label class="toggle-card" for="teacher-section-enabled">
+          <span class="toggle-copy">
+            <span class="toggle-title">Teacher advertisements</span>
+            <span class="toggle-description">Show published advertisements on Teacher dashboards.</span>
+          </span>
+          <input
+            id="teacher-section-enabled"
+            type="checkbox"
+            name="teacherSectionEnabled"
+            [(ngModel)]="settings.teacherSectionEnabled"
+            [disabled]="saving"
+          />
+        </label>
+
+        <label class="toggle-card" for="student-section-enabled">
+          <span class="toggle-copy">
+            <span class="toggle-title">Student advertisements</span>
+            <span class="toggle-description">Show published advertisements on Student dashboards.</span>
+          </span>
+          <input
+            id="student-section-enabled"
+            type="checkbox"
+            name="studentSectionEnabled"
+            [(ngModel)]="settings.studentSectionEnabled"
+            [disabled]="saving"
+          />
+        </label>
+      </div>
+
+      <div class="timing-settings" aria-labelledby="timing-settings-title">
+        <div class="timing-heading">
+          <h3 id="timing-settings-title">Dashboard motion timing</h3>
+          <p>These defaults apply to horizontal advertisements unless an advertisement has its own interval.</p>
+        </div>
+        <div class="timing-grid">
+          <label for="default-rotation-interval">
+            Default rotation interval
+            <span class="input-with-unit">
+              <input id="default-rotation-interval" type="number" name="defaultRotationIntervalSeconds"
+                [(ngModel)]="defaultRotationIntervalSeconds" min="3" max="60" step="1"
+                [disabled]="saving" [attr.aria-invalid]="timingValidationError ? 'true' : null" />
+              <span>seconds</span>
+            </span>
+            <small>Whole seconds from 3 to 60. The initial default is 5 seconds.</small>
+          </label>
+
+          <label for="transition-duration">
+            Transition duration
+            <span class="input-with-unit">
+              <input id="transition-duration" type="number" name="transitionDurationMs"
+                [(ngModel)]="transitionDurationMs" min="0" max="2000" step="50"
+                [disabled]="saving" [attr.aria-invalid]="timingValidationError ? 'true' : null" />
+              <span>ms</span>
+            </span>
+            <small>0 disables the visual transition; maximum 2000 ms.</small>
+          </label>
+        </div>
+        @if (timingValidationError) {
+          <p class="field-error" role="alert">{{ timingValidationError }}</p>
+        }
+        <p class="motion-note">A user’s reduced-motion preference disables automatic advertisement motion.</p>
+      </div>
+
+      <p class="help-text">Changes apply after they are saved and may take effect on the next dashboard feed request.</p>
+    </section>
+  }
+</main>

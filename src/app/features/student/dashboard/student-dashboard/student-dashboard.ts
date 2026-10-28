@@ -14,6 +14,7 @@ import { StudentFeeService } from '../../../admin/fees/services/student-fee.serv
 import { StudentFee } from '../../../admin/fees/models/student-fee.model';
 
 import { Attendance } from '../../../admin/attendance/models/attendance.model';
+import { AdvertisementDisplayComponent } from '../../../../shared/components/advertisement-display/advertisement-display.component';
 
 
 
@@ -47,7 +48,8 @@ interface ProfileResponse {
   standalone: true,
 
   imports: [
-    CommonModule
+    CommonModule,
+    AdvertisementDisplayComponent
   ],
 
   templateUrl: './student-dashboard.html',

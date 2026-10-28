@@ -94,4 +94,36 @@ FEE_PAYMENTS: {
   BASE: '/profile',
   CHANGE_PASSWORD: '/profile/password'
 },
+
+  ADVERTISEMENTS: {
+    BASE: '/advertisements',
+
+    SETTINGS: '/advertisements/settings',
+
+    FEED: '/advertisements/feed',
+
+    BY_ID: (id: number) =>
+      `/advertisements/${id}`,
+
+    PUBLISH: (id: number) =>
+      `/advertisements/${id}/publish`,
+
+    PAUSE: (id: number) =>
+      `/advertisements/${id}/pause`,
+
+    RESUME: (id: number) =>
+      `/advertisements/${id}/resume`,
+
+    ARCHIVE: (id: number) =>
+      `/advertisements/${id}/archive`,
+
+    MEDIA: (id: number) =>
+      `/advertisements/${id}/media`,
+
+    MEDIA_BY_ID: (id: number, mediaId: number) =>
+      `/advertisements/${id}/media/${mediaId}`,
+
+    MEDIA_CONTENT: (mediaId: number) =>
+      `/advertisements/media/${mediaId}`
+  },
 };

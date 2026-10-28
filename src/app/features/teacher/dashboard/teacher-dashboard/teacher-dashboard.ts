@@ -9,6 +9,7 @@ import { Router } from '@angular/router';
 
 import { ApiService } from '../../../../core/services/api.service';
 import { PermissionService } from '../../../../core/auth/permission.service';
+import { AdvertisementDisplayComponent } from '../../../../shared/components/advertisement-display/advertisement-display.component';
 
 
 interface ApiResponse<T> {
@@ -89,7 +90,7 @@ interface TeacherAttendanceRecord {
 @Component({
   selector: 'app-teacher-dashboard',
   standalone: true,
-  imports: [],
+  imports: [AdvertisementDisplayComponent],
   templateUrl: './teacher-dashboard.html',
   styleUrl: './teacher-dashboard.scss'
 })

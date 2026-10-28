@@ -1,0 +1,651 @@
+<section class="advertisement-form-page">
+  <header class="page-header">
+    <button type="button" class="back-link" (click)="cancel()">← Advertisements</button>
+    <app-page-header [title]="isEditMode ? 'Edit Advertisement' : 'Create Advertisement'"
+      [description]="isEditMode ? 'Manage this tenant advertisement and its media.' : 'Create a draft advertisement for your tenant.'"
+      breadcrumb="Admin / Advertisements" />
+  </header>
+
+  @if (errorMessage) {
+  <div class="alert-error" role="alert">{{ errorMessage }}</div>
+  }
+  @if (successMessage) {
+  <div class="alert-success" role="status">{{ successMessage }}</div>
+  }
+
+  @if (loading) {
+  <div class="state-message">Loading advertisement...</div>
+  } @else {
+  <form class="form-card" (ngSubmit)="save()">
+    <div class="editor-workspace">
+      <div class="editor-column">
+        <section class="form-section media-section media-first-section" aria-labelledby="media-first-title">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Step 1</span>
+              <h2 id="media-first-title">Start with your media</h2>
+              <p class="section-description">Add the artwork first, then shape the content and presentation around it.
+              </p>
+            </div>
+            @if (advertisement) {
+            <span class="version-label">Version {{ advertisement.version }}</span>
+            }
+          </div>
+
+          @if (advertisement) {
+          @if (advertisement.media.length) {
+          <div class="media-list">
+            @for (media of orderedMedia(); track media.id; let mediaIndex = $index) {
+            <article class="media-item" [class.primary-media-item]="mediaIndex === 0">
+              <div class="media-preview" role="img"
+                [attr.aria-label]="media.altText || media.originalFilename || 'Advertisement image'">
+                @if (previewUrl(media.id); as preview) {
+                <img [src]="preview" [alt]="media.altText || media.originalFilename || 'Advertisement image'" />
+                } @else if (mediaPreviewErrors.has(media.id)) {
+                <span>Preview unavailable</span>
+                } @else {
+                <span role="status" aria-live="polite">Loading preview...</span>
+                }
+              </div>
+              <div class="media-item-details">
+                <div class="media-item-title">
+                  <strong>{{ media.originalFilename || 'Advertisement image' }}</strong>
+                  @if (mediaIndex === 0) {
+                  <span class="primary-media-badge">Primary image</span>
+                  }
+                </div>
+                <span>{{ media.contentType }} · {{ formatBytes(media.fileSizeBytes) }} · Order {{ media.displayOrder
+                  }}</span>
+                @if (media.altText) { <small>{{ media.altText }}</small> }
+                @if (mediaPreviewErrors.has(media.id)) {
+                <button type="button" class="text-btn" (click)="retryMediaPreview(media.id)">Retry preview</button>
+                }
+                @if (!canEditDraft) {
+                <small class="media-action-note">Removal is available only while this advertisement is a draft.</small>
+                }
+              </div>
+              <button type="button" class="text-btn danger-btn" [disabled]="busy || !canEditDraft"
+                [attr.title]="canEditDraft ? 'Remove image' : 'Only draft advertisements can remove images'"
+                [attr.aria-label]="canEditDraft ? 'Remove ' + (media.originalFilename || 'image') : 'Image removal is available only for draft advertisements'"
+                (click)="confirmAction('removeMedia', media.id)">Remove</button>
+            </article>
+            }
+          </div>
+          } @else {
+          <p class="inline-note">No images have been uploaded yet.</p>
+          }
+
+          }
+
+          @if (canEditDraft) {
+          <div class="upload-box">
+            <div class="upload-dropzone" [class.is-disabled]="uploading" (dragover)="$event.preventDefault()"
+              (drop)="onFilesDropped($event)">
+              <span class="upload-icon" aria-hidden="true">↥</span>
+              <strong>Add images to your advertisement</strong>
+              <small>Drag and drop your images here, or browse your device.</small>
+              <button type="button" class="upload-browse-button" [disabled]="uploading"
+                (click)="openFilePicker(advertisementImageInput)">
+                Browse images
+              </button>
+              <span id="advertisement-upload-requirements" class="upload-requirements">
+                PNG/JPEG · Maximum 5 MiB per image · Multiple images supported
+              </span>
+              <span class="upload-dimensions" aria-describedby="advertisement-upload-requirements">
+                Recommended dimensions: {{ recommendedImageDimensions() }}.
+                These are recommendations, not enforced upload requirements.
+                Images preserve their natural aspect ratio and are shown without cropping.
+              </span>
+              <input #advertisementImageInput class="visually-hidden-file-input" type="file"
+                accept="image/png,image/jpeg" multiple tabindex="-1" aria-hidden="true"
+                aria-describedby="advertisement-upload-requirements" (change)="onFilesSelected($event)"
+                [disabled]="uploading" />
+            </div>
+            <div class="upload-options">
+              <label>
+                Alt text <span class="optional">(optional)</span>
+                <input type="text" name="uploadAltText" [(ngModel)]="uploadAltText" maxlength="255" />
+              </label>
+              <label>
+                Starting display order
+                <input type="number" name="uploadDisplayOrder" [(ngModel)]="uploadDisplayOrder" min="0" step="1" />
+              </label>
+            </div>
+            @if (selectedFiles.length) {
+            <p class="file-summary">{{ selectedFiles.length }} file{{ selectedFiles.length === 1 ? '' : 's' }} selected
+              for upload.</p>
+            <div class="selected-file-list" aria-label="Selected image previews">
+              @for (preview of selectedFilePreviews; track preview.url; let selectedIndex = $index) {
+              <div class="selected-file-item">
+                <img [src]="preview.url" [alt]="preview.file.name || 'Selected advertisement image'" />
+                <span>{{ preview.file.name }}</span>
+                @if (selectedIndex === 0 && (!advertisement || !advertisement.media.length)) {
+                <small>Primary image</small>
+                }
+                <button type="button" class="text-btn danger-btn" [disabled]="uploading"
+                  [attr.aria-label]="'Remove selected ' + (preview.file.name || 'image')"
+                  (click)="removeSelectedFile(preview.file)">Remove</button>
+              </div>
+              }
+            </div>
+            }
+            @if (!advertisement) {
+            <p class="pre-save-note">Save the draft to enable upload and protected media previews. Your selected local
+              previews will remain available.</p>
+            }
+            @if (uploadError) { <p class="field-error" role="alert">{{ uploadError }}</p> }
+            <button type="button" class="secondary-btn" (click)="uploadSelected()"
+              [disabled]="!advertisement || uploading || !selectedFiles.length || !!uploadValidationError">
+              {{ uploading ? 'Uploading...' : (advertisement ? 'Upload images' : 'Save draft to upload') }}
+            </button>
+          </div>
+          }
+        </section>
+
+        <section class="form-section" aria-labelledby="content-title">
+          <span class="section-kicker">Step 2</span>
+          <h2 id="content-title">Content</h2>
+          <p class="section-description">Keep the message concise. These values are preserved even in image-only mode.
+          </p>
+
+          <div class="form-grid">
+            <label class="span-two">
+              Title <span class="required">*</span>
+              <input type="text" name="title" [(ngModel)]="form.title" maxlength="200" required
+                [disabled]="saving || !canEditDraft" />
+            </label>
+
+            <label class="span-two">
+              Description <span class="optional">(optional)</span>
+              <textarea name="description" [(ngModel)]="form.description" rows="4" maxlength="2000"
+                [disabled]="saving || !canEditDraft"></textarea>
+            </label>
+
+            <label>
+              CTA presentation
+              <select name="ctaPresentation" [(ngModel)]="form.ctaPresentation" [disabled]="saving || !canEditDraft">
+                @for (presentation of ctaPresentations; track presentation) {
+                <option [ngValue]="presentation">{{ ctaPresentationLabel(presentation) }}</option>
+                }
+              </select>
+            </label>
+
+            @if (showsCtaFields()) {
+            <label>
+              CTA label <span class="optional">(optional)</span>
+              <input type="text" name="ctaLabel" [(ngModel)]="form.ctaLabel" maxlength="100"
+                [disabled]="saving || !canEditDraft" [attr.aria-invalid]="ctaLabelError ? 'true' : null"
+                [attr.aria-describedby]="ctaLabelError ? 'cta-label-error' : null" />
+              @if (ctaLabelError) { <small id="cta-label-error" class="field-error" role="alert">{{ ctaLabelError
+                }}</small> }
+            </label>
+            <label>
+              CTA destination <span class="optional">(optional)</span>
+              <input type="text" name="ctaDestination" [(ngModel)]="form.ctaDestination" maxlength="1000"
+                [disabled]="saving || !canEditDraft" [attr.aria-invalid]="ctaDestinationError ? 'true' : null"
+                [attr.aria-describedby]="ctaDestinationError ? 'cta-destination-error' : null" />
+              @if (ctaDestinationError) { <small id="cta-destination-error" class="field-error" role="alert">{{
+                ctaDestinationError }}</small> }
+            </label>
+            }
+          </div>
+        </section>
+
+        <section class="form-section" aria-labelledby="layout-title">
+          <span class="section-kicker">Step 3</span>
+          <h2 id="layout-title">Layout and schedule</h2>
+          <p class="section-description">Choose the audience and the way your ordered media will be presented.</p>
+
+          <div class="form-grid">
+            <label>
+              Audience <span class="required">*</span>
+              <select name="audience" [(ngModel)]="form.audience" required [disabled]="saving || !canEditDraft">
+                @for (audience of audiences; track audience) {
+                <option [ngValue]="audience">{{ audience }}</option>
+                }
+              </select>
+            </label>
+
+            <label>
+              Layout <span class="required">*</span>
+              <select name="layout" [ngModel]="form.layout" (ngModelChange)="onLayoutChange($event)" required
+                [disabled]="saving || !canEditDraft">
+                @for (layout of layouts; track layout) {
+                <option [ngValue]="layout">{{ presentationLabel(layout) }}</option>
+                }
+              </select>
+              <small class="field-guidance">{{ layoutDescription(form.layout) }}</small>
+            </label>
+
+            <fieldset class="orientation-fieldset">
+              <legend>Card orientation</legend>
+              <div class="orientation-options">
+                @for (orientation of orientations; track orientation) {
+                <label class="orientation-option" [class.selected]="form.orientation === orientation">
+                  <input type="radio" name="orientation" value="{{ orientation }}"
+                    [checked]="form.orientation === orientation" (change)="form.orientation = orientation"
+                    [disabled]="saving || !canEditDraft" />
+                  <span class="orientation-swatch" [class.orientation-swatch-vertical]="orientation === 'VERTICAL'"
+                    aria-hidden="true"></span>
+                  <span class="orientation-copy">
+                    <strong>{{ orientation === 'HORIZONTAL' ? 'Horizontal' : 'Vertical' }}</strong>
+                    <small>{{ orientation === 'HORIZONTAL' ? 'Wide banner presentation' : 'Portrait card presentation'
+                      }}</small>
+                  </span>
+                </label>
+                }
+              </div>
+              <p class="field-guidance orientation-guidance">
+                Advertisements use a unified responsive presentation. Legacy vertical records remain compatible when edited;
+                images keep their natural proportions and use contained presentation rather than cropping.
+              </p>
+            </fieldset>
+
+            <fieldset class="rotation-fieldset">
+              <legend>Advertisement rotation interval</legend>
+              <label class="inherit-rotation-option">
+                <input type="checkbox" name="useTenantDefaultRotation" [(ngModel)]="useTenantDefaultRotation"
+                  [disabled]="saving || !canEditDraft" />
+                <span>
+                  <strong>Use tenant default</strong>
+                  <small>Use the interval configured in Advertisement Settings.</small>
+                </span>
+              </label>
+              @if (!useTenantDefaultRotation) {
+              <label for="rotation-interval-seconds">
+                Rotation interval
+                <span class="input-with-unit">
+                  <input id="rotation-interval-seconds" type="number" name="rotationIntervalSeconds"
+                    [(ngModel)]="rotationIntervalSeconds" min="3" max="60" step="1" [disabled]="saving || !canEditDraft"
+                    [attr.aria-invalid]="rotationIntervalError ? 'true' : null"
+                    [attr.aria-describedby]="rotationIntervalError ? 'rotation-interval-error' : null" />
+                  <span>seconds</span>
+                </span>
+                @if (rotationIntervalError) {
+                <small id="rotation-interval-error" class="field-error" role="alert">{{ rotationIntervalError }}</small>
+                } @else {
+                <small class="field-guidance">Whole seconds from 3 to 60.</small>
+                }
+              </label>
+              }
+            </fieldset>
+
+            <label>
+              Publish at <span class="optional">(local time)</span>
+              <input type="datetime-local" name="publishAt" [(ngModel)]="form.publishAt"
+                [disabled]="saving || !canEditDraft" />
+            </label>
+
+            <label>
+              Expires at <span class="optional">(local time)</span>
+              <input type="datetime-local" name="expiresAt" [(ngModel)]="form.expiresAt"
+                [disabled]="saving || !canEditDraft" />
+            </label>
+          </div>
+        </section>
+
+        <details class="form-section advanced-settings" open>
+          <summary>Appearance <span>Presentation and overlay controls</span></summary>
+          <div class="presentation-settings" aria-labelledby="presentation-settings-title">
+            <label class="image-only-toggle">
+              <input type="checkbox" name="imageOnly" [(ngModel)]="form.imageOnly"
+                [disabled]="saving || !canEditDraft" />
+              <span>
+                <strong id="presentation-settings-title">Image-only mode</strong>
+                <small>Hide the title, description and CTA from the visible preview and dashboard presentation without
+                  deleting their values.</small>
+              </span>
+            </label>
+
+            <div class="presentation-grid">
+              <label>
+                Overlay style
+                <select name="overlayStyle" [(ngModel)]="form.overlayStyle" [disabled]="saving || !canEditDraft">
+                  @for (style of overlayStyles; track style) {
+                  <option [ngValue]="style">{{ presentationLabel(style) }}</option>
+                  }
+                </select>
+              </label>
+
+              @if (!form.imageOnly && form.overlayStyle !== 'NONE') {
+              <label>
+                Overlay position
+                <select name="overlayPosition" [(ngModel)]="form.overlayPosition" [disabled]="saving || !canEditDraft">
+                  @for (position of overlayPositions; track position) {
+                  <option [ngValue]="position">{{ presentationLabel(position) }}</option>
+                  }
+                </select>
+              </label>
+
+              <label>
+                Text color
+                <select name="overlayTextColor" [(ngModel)]="form.overlayTextColor"
+                  [disabled]="saving || !canEditDraft">
+                  @for (color of overlayTextColors; track color) {
+                  <option [ngValue]="color">{{ presentationLabel(color) }}</option>
+                  }
+                </select>
+              </label>
+
+              <label>
+                CTA button style
+                <select name="buttonStyle" [(ngModel)]="form.buttonStyle" [disabled]="saving || !canEditDraft">
+                  @for (style of buttonStyles; track style) {
+                  <option [ngValue]="style">{{ presentationLabel(style) }}</option>
+                  }
+                </select>
+              </label>
+
+              <label class="opacity-control">
+                <span class="opacity-label">
+                  <span>Overlay opacity</span>
+                  <output>{{ overlayOpacityPercent() }}%</output>
+                </span>
+                <input type="range" name="overlayOpacity" min="0.2" max="0.9" step="0.05"
+                  [ngModel]="form.overlayOpacity" (ngModelChange)="updateOverlayOpacity($event)"
+                  [disabled]="saving || !canEditDraft" aria-label="Overlay opacity" />
+                <small>Available from 20% to 90%.</small>
+              </label>
+              }
+            </div>
+          </div>
+        </details>
+
+        @if (advertisement) {
+        <section class="form-section lifecycle-section">
+          <h2>Lifecycle</h2>
+          <p class="section-description">Use the current server version for every lifecycle action.</p>
+          <div class="lifecycle-actions">
+            @if (advertisement.status === 'DRAFT') {
+            <button type="button" class="primary-btn" [disabled]="busy"
+              (click)="confirmAction('publish')">Publish</button>
+            }
+            @if (advertisement.status === 'PUBLISHED') {
+            <button type="button" class="secondary-btn" [disabled]="busy"
+              (click)="confirmAction('pause')">Pause</button>
+            }
+            @if (advertisement.status === 'PAUSED') {
+            <button type="button" class="secondary-btn" [disabled]="busy"
+              (click)="confirmAction('resume')">Resume</button>
+            }
+            @if (advertisement.status !== 'ARCHIVED') {
+            <button type="button" class="secondary-btn" [disabled]="busy"
+              (click)="confirmAction('archive')">Archive</button>
+            }
+            <button type="button" class="danger-button" [disabled]="busy" (click)="confirmAction('delete')">Delete
+              permanently</button>
+          </div>
+        </section>
+        }
+
+        <footer class="form-footer">
+          @if (isEditMode && advertisement && !canEditDraft) {
+          <span class="draft-note">Only draft advertisements can be edited or receive new images.</span>
+          } @else {
+          <span class="draft-note">New advertisements are saved as drafts.</span>
+          }
+          <div class="footer-actions">
+            <button type="button" class="secondary-btn" (click)="cancel()" [disabled]="saving || busy">Cancel</button>
+            @if (!isEditMode || canEditDraft) {
+            <button type="submit" class="primary-btn" [disabled]="saving || busy">
+              {{ saving ? 'Saving...' : (advertisement ? 'Save changes' : 'Create draft') }}
+            </button>
+            }
+          </div>
+        </footer>
+      </div>
+
+      <aside class="preview-column">
+        <section class="form-section preview-section" aria-labelledby="advertisement-preview-title">
+          <div class="section-heading">
+            <div>
+              <h2 id="advertisement-preview-title">Live preview</h2>
+              <p class="section-description">Preview the current unsaved content without saving or publishing it.</p>
+            </div>
+            <span class="preview-context">{{ previewAudienceLabel() }} · {{ previewViewport | titlecase }}</span>
+          </div>
+
+          <div class="preview-controls">
+            @if (form.audience === 'BOTH') {
+            <fieldset>
+              <legend>Preview audience</legend>
+              <div class="segmented-control">
+                <button type="button" [class.selected]="previewAudience === 'TEACHER'"
+                  [attr.aria-pressed]="previewAudience === 'TEACHER'"
+                  (click)="setPreviewAudience('TEACHER')">Teacher</button>
+                <button type="button" [class.selected]="previewAudience === 'STUDENT'"
+                  [attr.aria-pressed]="previewAudience === 'STUDENT'"
+                  (click)="setPreviewAudience('STUDENT')">Student</button>
+              </div>
+            </fieldset>
+            } @else {
+            <p class="preview-audience-note">Previewing the {{ previewAudienceLabel() }} audience configured for this
+              advertisement.</p>
+            }
+
+            <fieldset>
+              <legend>Preview viewport</legend>
+              <div class="segmented-control">
+                <button type="button" [class.selected]="previewViewport === 'desktop'"
+                  [attr.aria-pressed]="previewViewport === 'desktop'" (click)="previewViewport = 'desktop'">
+                  Desktop
+                </button>
+                <button type="button" [class.selected]="previewViewport === 'tablet'"
+                  [attr.aria-pressed]="previewViewport === 'tablet'" (click)="previewViewport = 'tablet'">
+                  Tablet
+                </button>
+                <button type="button" [class.selected]="previewViewport === 'mobile'"
+                  [attr.aria-pressed]="previewViewport === 'mobile'" (click)="previewViewport = 'mobile'">
+                  Mobile
+                </button>
+              </div>
+            </fieldset>
+          </div>
+
+          <section class="dashboard-simulator" aria-labelledby="dashboard-simulator-title">
+            <div class="dashboard-simulator-heading">
+              <div>
+                <span class="preview-eyebrow">Draft Preview</span>
+                <h3 id="dashboard-simulator-title">Dashboard simulator</h3>
+                <p>Unsaved values are shown in the same advertisement renderer used by Teacher and Student dashboards.
+                </p>
+              </div>
+              <span class="preview-context">{{ previewAudienceLabel() }} · {{ previewViewport | titlecase }}</span>
+            </div>
+            @if (!previewMatchesAudience()) {
+            <div class="preview-notice" role="status">
+              This advertisement is configured for {{ form.audience }} and will not be shown to {{
+              previewAudienceLabel() }} users.
+            </div>
+            }
+            <div class="dashboard-simulator-toolbar" role="group" aria-label="Dashboard preview controls">
+              <button type="button" class="secondary-btn" (click)="previewToggleRotation()">
+                {{ previewPlaying ? 'Pause' : 'Play' }}
+              </button>
+              <button type="button" class="text-btn" (click)="previewRestart()">Restart</button>
+              <button type="button" class="text-btn" (click)="previewPrevious()"
+                aria-label="Previous advertisement">Previous</button>
+              <button type="button" class="text-btn" (click)="previewNext()"
+                aria-label="Next advertisement">Next</button>
+              <button type="button" class="text-btn" (click)="togglePreviewSampleSlide()">
+                {{ previewSampleSlide ? 'Remove sample slide' : 'Add sample slide' }}
+              </button>
+              <span class="preview-position" aria-live="polite">{{ previewPositionLabel() }}</span>
+              <span class="preview-timing">Every {{ useTenantDefaultRotation ?
+                (previewSettings.defaultRotationIntervalMs / 1000) : rotationIntervalSeconds }}s · {{
+                previewSettings.transitionDurationMs }}ms transition</span>
+              <span class="preview-playback-status" role="status" aria-live="polite">{{ previewPlaybackStatus()
+                }}</span>
+            </div>
+            <div class="dashboard-simulator-frame" [class.simulator-desktop]="previewViewport === 'desktop'"
+              [class.simulator-tablet]="previewViewport === 'tablet'"
+              [class.simulator-mobile]="previewViewport === 'mobile'">
+              @if (previewMatchesAudience()) {
+              <app-advertisement-display [previewMode]="true" [previewAdvertisements]="dashboardPreviewAdvertisements()"
+                [previewDisplaySettings]="dashboardPreviewSettings()" [previewMediaUrls]="previewMediaUrlMap"
+                (playbackStateChange)="onPreviewPlaybackStateChange($event)">
+              </app-advertisement-display>
+              } @else {
+              <div class="preview-empty-state" role="status">
+                The shared dashboard renderer is suppressed for this audience.
+              </div>
+              }
+            </div>
+          </section>
+
+          @if (false) {
+          <div class="preview-stage" [class.mobile-preview]="previewViewport === 'mobile'">
+            @if (!previewMatchesAudience()) {
+            <div class="preview-notice" role="status">
+              This advertisement is configured for {{ form.audience }} and will not be shown to {{
+              previewAudienceLabel() }} users.
+            </div>
+            } @else {
+            <ng-template #previewCopy>
+              <div class="preview-copy" [class.preview-copy-overlay]="usesOverlayPreview()">
+                <span class="preview-eyebrow">Advertisement preview</span>
+                @if (form.title.trim()) {
+                <h3>{{ form.title.trim() }}</h3>
+                } @else {
+                <p class="preview-empty">Add a title to preview the advertisement.</p>
+                }
+
+                @if (form.description?.trim()) {
+                <p class="preview-description">{{ form.description?.trim() }}</p>
+                } @else {
+                <p class="preview-placeholder">Description will appear here when provided.</p>
+                }
+
+                @if (form.ctaPresentation !== 'NONE' && form.ctaLabel?.trim() && safePreviewCtaDestination(); as
+                destination) {
+                <a class="preview-cta" [class.preview-cta-outline]="form.buttonStyle === 'OUTLINE'"
+                  [class.preview-cta-text]="form.buttonStyle === 'TEXT'" [href]="destination" target="_blank"
+                  [class.preview-cta-text-link]="form.ctaPresentation === 'TEXT_LINK'" rel="noopener noreferrer">
+                  {{ form.ctaLabel?.trim() }} <span aria-hidden="true">↗</span>
+                </a>
+                } @else if (form.ctaPresentation !== 'NONE' && (form.ctaLabel?.trim() || form.ctaDestination?.trim())) {
+                <p class="preview-placeholder">CTA preview requires a label and a safe destination.</p>
+                }
+              </div>
+            </ng-template>
+
+            <ng-template #previewEmpty>
+              <div class="preview-empty-state" role="status">
+                <span class="preview-empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 32 32" focusable="false">
+                    <rect x="4" y="5" width="24" height="22" rx="3"></rect>
+                    <circle cx="11" cy="12" r="2"></circle>
+                    <path d="m7 24 6-6 4 4 3-3 5 5"></path>
+                  </svg>
+                </span>
+                <strong>Add images to preview your advertisement.</strong>
+                <p>Select an image to update this preview automatically.</p>
+              </div>
+            </ng-template>
+
+            <article class="preview-banner" [class.preview-banner-mobile]="previewViewport === 'mobile'"
+              [class.preview-banner-horizontal]="form.orientation !== 'VERTICAL'"
+              [class.preview-banner-vertical]="form.orientation === 'VERTICAL'"
+              [class.preview-banner-overlay]="usesOverlayPreview()" [class.preview-banner-image-only]="form.imageOnly"
+              aria-label="Advertisement preview">
+              @if (!usesOverlayPreview() && !form.imageOnly) {
+              <ng-container [ngTemplateOutlet]="previewCopy"></ng-container>
+              }
+
+              <div class="preview-visual" [class.preview-visual-overlay]="usesOverlayPreview()">
+                @if (form.layout === 'STATIC_BANNER') {
+                <div class="preview-media preview-media-static" aria-label="Preview image">
+                  @if (hasCurrentPreviewImage()) {
+                  <div class="preview-media-frame" [class.media-frame-portrait]="currentPreviewImageIsPortrait()"
+                    [style.--media-backdrop-image]="currentPreviewBackdropStyle()">
+                    @if (currentPreviewUrl(); as previewUrl) {
+                    <img [src]="previewUrl" [alt]="currentPreviewAlt()"
+                      (load)="onCurrentPreviewImageLoad($event)" />
+                    } @else {
+                    <span class="preview-placeholder" role="status" aria-live="polite">Loading preview...</span>
+                    }
+                  </div>
+                  } @else {
+                  <ng-container [ngTemplateOutlet]="previewEmpty"></ng-container>
+                  }
+                </div>
+                } @else if (form.layout === 'CAROUSEL') {
+                <div class="preview-media preview-media-carousel" aria-label="Preview image carousel">
+                  @if (hasCurrentPreviewImage()) {
+                  <div class="preview-media-frame" [class.media-frame-portrait]="currentPreviewImageIsPortrait()"
+                    [style.--media-backdrop-image]="currentPreviewBackdropStyle()">
+                    @if (currentPreviewUrl(); as previewUrl) {
+                    <img [src]="previewUrl" [alt]="currentPreviewAlt()"
+                      (load)="onCurrentPreviewImageLoad($event)" />
+                    } @else {
+                    <span class="preview-placeholder" role="status" aria-live="polite">Loading preview...</span>
+                    }
+                  </div>
+                  } @else {
+                  <ng-container [ngTemplateOutlet]="previewEmpty"></ng-container>
+                  }
+                </div>
+                } @else if (form.layout === 'RESPONSIVE_TILES') {
+                <div class="preview-media preview-media-tiles" aria-label="Preview image tiles">
+                  @if (previewImages().length) {
+                  @for (image of previewImages(); track image.key) {
+                  <div class="preview-media-frame" [class.media-frame-portrait]="isPortraitPreview(image)"
+                    [style.--media-backdrop-image]="previewBackdropStyle(image)">
+                    @if (image.url) {
+                    <img [src]="image.url" [alt]="image.alt || 'Advertisement preview image'"
+                      (load)="onPreviewImageLoad(image, $event)" />
+                    } @else {
+                    <span class="preview-placeholder" role="status" aria-live="polite">Loading preview...</span>
+                    }
+                  </div>
+                  }
+                  } @else {
+                  <ng-container [ngTemplateOutlet]="previewEmpty"></ng-container>
+                  }
+                </div>
+                } @else {
+                <div class="preview-placeholder" role="status">This layout is not available for preview.</div>
+                }
+
+                @if (usesOverlayPreview()) {
+                <div class="preview-overlay" [class.overlay-style-gradient]="form.overlayStyle === 'GRADIENT'"
+                  [class.overlay-style-glass]="form.overlayStyle === 'GLASS'"
+                  [class.overlay-style-badge]="form.overlayStyle === 'BADGE'"
+                  [class.overlay-position-bottom-left]="form.overlayPosition === 'BOTTOM_LEFT'"
+                  [class.overlay-position-bottom-center]="form.overlayPosition === 'BOTTOM_CENTER'"
+                  [class.overlay-position-center-left]="form.overlayPosition === 'CENTER_LEFT'"
+                  [class.overlay-position-bottom-right]="form.overlayPosition === 'BOTTOM_RIGHT'"
+                  [class.overlay-text-light]="form.overlayTextColor === 'LIGHT'"
+                  [class.overlay-text-dark]="form.overlayTextColor === 'DARK'" [style.opacity]="form.overlayOpacity"
+                  aria-label="Advertisement text overlay">
+                  <ng-container [ngTemplateOutlet]="previewCopy"></ng-container>
+                </div>
+                }
+              </div>
+              @if (form.layout === 'CAROUSEL' && previewImages().length > 1) {
+              <div class="preview-media-navigation preview-media-footer" aria-label="Preview image navigation">
+                <button type="button" class="preview-media-button" (click)="showPreviousPreviewMedia()"
+                  [disabled]="previewMediaIndex === 0" aria-label="Previous preview image">
+                  <span aria-hidden="true">‹</span>
+                </button>
+                <span aria-live="polite">Image {{ previewMediaIndex + 1 }} of {{ previewImages().length }}</span>
+                <button type="button" class="preview-media-button" (click)="showNextPreviewMedia()"
+                  [disabled]="previewMediaIndex >= previewImages().length - 1" aria-label="Next preview image">
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
+              }
+            </article>
+            }
+          </div>
+          }
+        </section>
+      </aside>
+    </div>
+  </form>
+  }
+</section>
+
+<app-confirmation-dialog [visible]="pendingAction !== null" [title]="actionTitle()" [message]="actionMessage()"
+  [confirmLabel]="pendingAction?.type === 'delete' ? 'Delete permanently' : 'Confirm'" (confirmed)="executeAction()"
+  (cancelled)="cancelAction()" />

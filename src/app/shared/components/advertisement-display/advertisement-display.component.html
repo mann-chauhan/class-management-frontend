@@ -1,0 +1,232 @@
+@if (!dismissed) {
+@if (loading) {
+  <span class="visually-hidden" role="status">Loading advertisements...</span>
+}
+
+@if (errorMessage) {
+  <span class="visually-hidden" role="alert">{{ errorMessage }}</span>
+}
+
+@if (!loading && !errorMessage && !advertisements.length) {
+  <span class="visually-hidden" role="status">No advertisements available.</span>
+}
+
+@if (advertisements.length && !previewMode) {
+  <div class="advertisement-display-controls" role="group" aria-label="Advertisement display controls">
+    <button type="button" class="advertisement-control-button"
+      [attr.aria-pressed]="userRotationPaused"
+      [attr.aria-label]="userRotationPaused ? 'Resume automatic advertisements' : 'Pause automatic advertisements'"
+      (click)="toggleAutomaticRotation()">
+      {{ userRotationPaused ? 'Resume' : 'Pause' }}
+    </button>
+    <button type="button" class="advertisement-control-button advertisement-close-button"
+      aria-label="Close advertisements" (click)="dismissAdvertisements()">×</button>
+  </div>
+}
+
+@if (activeAdvertisement) {
+    <ng-template #advertisementCopy let-advertisement="advertisement">
+      <div class="advertisement-copy">
+        <p class="advertisement-eyebrow">Advertisement</p>
+        <h2 [id]="'advertisement-title-' + advertisement.id">{{ advertisement.title }}</h2>
+
+        @if (advertisement.description) {
+          <p class="advertisement-description">{{ advertisement.description }}</p>
+        }
+
+        @if (ctaPresentation(advertisement) !== 'NONE' && advertisement.ctaLabel && safeCtaDestination(advertisement.ctaDestination); as destination) {
+          <a
+            class="advertisement-cta"
+            [class.advertisement-cta-outline]="(advertisement.buttonStyle ?? 'SOLID') === 'OUTLINE'"
+            [class.advertisement-cta-text]="(advertisement.buttonStyle ?? 'SOLID') === 'TEXT'"
+            [class.advertisement-cta-text-link]="ctaPresentation(advertisement) === 'TEXT_LINK'"
+            [href]="destination"
+            target="_blank"
+            rel="noopener noreferrer">
+            {{ advertisement.ctaLabel }}
+            <span aria-hidden="true">↗</span>
+          </a>
+        }
+      </div>
+    </ng-template>
+
+    <section
+      class="advertisement-display"
+      [class.layout-static-banner]="activeAdvertisement.layout === 'STATIC_BANNER'"
+      [class.layout-carousel]="activeAdvertisement.layout === 'CAROUSEL'"
+      [class.layout-responsive-tiles]="activeAdvertisement.layout === 'RESPONSIVE_TILES'"
+      [class.orientation-horizontal]="activeAdvertisement.orientation !== 'VERTICAL'"
+      [class.orientation-vertical]="activeAdvertisement.orientation === 'VERTICAL'"
+      [class.presentation-image-only]="activeSlideAdvertisements().length === 1 && isImageOnly(activeAdvertisement)"
+      [class.presentation-overlay]="activeSlideAdvertisements().length === 1 && usesOverlayPresentation(activeAdvertisement)"
+      [style.--advertisement-transition-duration]="horizontalTransitionDurationMs() + 'ms'"
+      [attr.aria-label]="activeSlideAdvertisements().length > 1 ? 'Advertisements' : null"
+      (focusin)="pauseForFocus()"
+      (focusout)="resumeFromFocus($event)"
+      (pointerenter)="pauseForPointer()"
+      (pointerleave)="resumeFromPointer()"
+      (touchstart)="onHorizontalTouchStart($event)"
+      (touchend)="onHorizontalTouchEnd($event)"
+      (touchcancel)="onHorizontalTouchCancel()">
+      <div class="advertisement-track">
+        @for (slide of displaySlides; track trackBySlide($index, slide)) {
+          <div
+            class="advertisement-slide"
+            [attr.data-slide-id]="slide[0]?.id"
+            [class.advertisement-slide-active]="isActiveSlide(slide)"
+            [class.advertisement-slide-incoming]="isIncomingSlide(slide)"
+            [class.advertisement-slide-outgoing]="isOutgoingSlide(slide)"
+            [attr.aria-hidden]="isActiveSlide(slide) ? null : 'true'"
+            [attr.inert]="isActiveSlide(slide) ? null : ''">
+            @for (advertisement of slide; track trackByAdvertisement($index, advertisement)) {
+              <article
+                class="advertisement-card"
+                [class.advertisement-card-legacy-vertical]="isVerticalAdvertisement(advertisement)"
+                [class.layout-static-banner]="advertisement.layout === 'STATIC_BANNER'"
+                [class.layout-carousel]="advertisement.layout === 'CAROUSEL'"
+                [class.layout-responsive-tiles]="advertisement.layout === 'RESPONSIVE_TILES'"
+                [class.presentation-image-only]="isImageOnly(advertisement)"
+                [class.presentation-overlay]="usesOverlayPresentation(advertisement)"
+                [attr.aria-labelledby]="isImageOnly(advertisement) ? null : 'advertisement-title-' + advertisement.id"
+                [attr.aria-label]="isImageOnly(advertisement) ? 'Advertisement' : null">
+                <div class="advertisement-content" [class.content-tiles]="advertisement.layout === 'RESPONSIVE_TILES'"
+                  [class.content-ambient]="hasAmbientBackdrop(advertisement)"
+                  [class.content-horizontal-portrait]="isHorizontalPortraitAdvertisement(advertisement)"
+                  [style.--media-backdrop-image]="horizontalPortraitBackdropStyle(advertisement)">
+              @if (showsExternalCopy(advertisement)) {
+                <ng-container
+                  [ngTemplateOutlet]="advertisementCopy"
+                  [ngTemplateOutletContext]="{ advertisement: advertisement }"></ng-container>
+              }
+
+              <div class="advertisement-visual" [class.visual-overlay]="usesOverlayPresentation(advertisement)">
+                @if (isKnownLayout(advertisement.layout)) {
+                  @if (advertisement.layout === 'STATIC_BANNER') {
+                    <div class="advertisement-media advertisement-media-static" aria-label="Advertisement image">
+                      @if (activeMediaFor(advertisement); as media) {
+                        <div class="advertisement-media-frame" [class.media-frame-portrait]="isPortraitMedia(media.id)"
+                          [style.--media-backdrop-image]="mediaBackdropStyle(media.id)">
+                          @if (imageUrl(media.id); as url) {
+                            <img class="advertisement-media-backdrop" [src]="url" alt="" aria-hidden="true" />
+                            <img [src]="url" [alt]="imageAlt(advertisement, media, 0)" loading="lazy"
+                              (load)="onMediaImageLoad(media.id, $event)" />
+                          } @else {
+                            <div class="media-unavailable" role="status" aria-live="polite">
+                              @if (mediaHasLoadError(media.id)) {
+                                <span>{{ imageAlt(advertisement, media, 0) }} unavailable</span>
+                                <button type="button" class="media-retry" (click)="retryMedia(media)"
+                                  [attr.aria-label]="'Retry loading ' + imageAlt(advertisement, media, 0)">Retry</button>
+                              } @else {
+                                <span>Loading image...</span>
+                              }
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <div class="media-unavailable" role="status">No image available.</div>
+                      }
+                    </div>
+                  } @else if (advertisement.layout === 'CAROUSEL') {
+                    <div class="advertisement-media advertisement-media-carousel" aria-label="Advertisement image carousel">
+                      @if (activeMediaFor(advertisement); as media) {
+                        <div class="advertisement-media-frame" [class.media-frame-portrait]="isPortraitMedia(media.id)"
+                          [style.--media-backdrop-image]="mediaBackdropStyle(media.id)">
+                          @if (imageUrl(media.id); as url) {
+                            <img class="advertisement-media-backdrop" [src]="url" alt="" aria-hidden="true" />
+                            <img [src]="url" [alt]="imageAlt(advertisement, media, mediaIndexFor(advertisement))" loading="lazy"
+                              (load)="onMediaImageLoad(media.id, $event)" />
+                          } @else {
+                            <div class="media-unavailable" role="status" aria-live="polite">
+                              @if (mediaHasLoadError(media.id)) {
+                                <span>{{ imageAlt(advertisement, media, mediaIndexFor(advertisement)) }} unavailable</span>
+                                <button type="button" class="media-retry" (click)="retryMedia(media)"
+                                  [attr.aria-label]="'Retry loading ' + imageAlt(advertisement, media, mediaIndexFor(advertisement))">Retry</button>
+                              } @else {
+                                <span>Loading image...</span>
+                              }
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <div class="media-unavailable" role="status">No image available.</div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="advertisement-media advertisement-media-tiles" aria-label="Advertisement image tiles">
+                      @for (media of advertisement.media; track trackByMedia($index, media); let mediaIndex = $index) {
+                          <div class="advertisement-media-frame" [class.media-frame-portrait]="isPortraitMedia(media.id)"
+                          [style.--media-backdrop-image]="mediaBackdropStyle(media.id)">
+                          @if (imageUrl(media.id); as url) {
+                            <img class="advertisement-media-backdrop" [src]="url" alt="" aria-hidden="true" />
+                            <img [src]="url" [alt]="imageAlt(advertisement, media, mediaIndex)" loading="lazy"
+                              (load)="onMediaImageLoad(media.id, $event)" />
+                          } @else {
+                            <div class="media-unavailable" role="status" aria-live="polite">
+                              @if (mediaHasLoadError(media.id)) {
+                                <span>{{ imageAlt(advertisement, media, mediaIndex) }} unavailable</span>
+                                <button type="button" class="media-retry" (click)="retryMedia(media)"
+                                  [attr.aria-label]="'Retry loading ' + imageAlt(advertisement, media, mediaIndex)">Retry</button>
+                              } @else {
+                                <span>Loading image...</span>
+                              }
+                            </div>
+                          }
+                        </div>
+                      } @empty {
+                        <div class="media-unavailable" role="status">No images available.</div>
+                      }
+                    </div>
+                  }
+
+                  @if (usesOverlayPresentation(advertisement)) {
+                    <div class="advertisement-overlay"
+                      [class.overlay-style-gradient]="advertisement.overlayStyle === 'GRADIENT'"
+                      [class.overlay-style-glass]="advertisement.overlayStyle === 'GLASS'"
+                      [class.overlay-style-badge]="advertisement.overlayStyle === 'BADGE'"
+                      [class.overlay-position-bottom-left]="(advertisement.overlayPosition ?? 'BOTTOM_LEFT') === 'BOTTOM_LEFT'"
+                      [class.overlay-position-bottom-center]="advertisement.overlayPosition === 'BOTTOM_CENTER'"
+                      [class.overlay-position-center-left]="advertisement.overlayPosition === 'CENTER_LEFT'"
+                      [class.overlay-position-bottom-right]="advertisement.overlayPosition === 'BOTTOM_RIGHT'"
+                      [class.overlay-text-light]="(advertisement.overlayTextColor ?? 'LIGHT') === 'LIGHT'"
+                      [class.overlay-text-dark]="advertisement.overlayTextColor === 'DARK'"
+                      [style.--overlay-opacity]="overlayOpacity(advertisement)"
+                      aria-label="Advertisement text overlay">
+                      <ng-container
+                        [ngTemplateOutlet]="advertisementCopy"
+                        [ngTemplateOutletContext]="{ advertisement: advertisement }"></ng-container>
+                    </div>
+                  }
+                } @else {
+                  <div class="layout-unavailable" role="status">
+                    This advertisement layout is not available in this version of the application.
+                  </div>
+                }
+              </div>
+
+              @if (advertisement.layout === 'CAROUSEL' && advertisement.media.length > 1) {
+                <div class="media-navigation media-navigation-footer" aria-label="Advertisement image navigation">
+                  <button type="button" class="navigation-button" (click)="showPreviousMedia(advertisement)"
+                    [disabled]="mediaIndexFor(advertisement) === 0" aria-label="Previous advertisement image">
+                    <span aria-hidden="true">‹</span>
+                  </button>
+                  <span class="navigation-position" aria-live="polite">
+                    Image {{ mediaIndexFor(advertisement) + 1 }} of {{ advertisement.media.length }}
+                  </span>
+                  <button type="button" class="navigation-button" (click)="showNextMedia(advertisement)"
+                    [disabled]="mediaIndexFor(advertisement) >= advertisement.media.length - 1"
+                    aria-label="Next advertisement image">
+                    <span aria-hidden="true">›</span>
+                  </button>
+                </div>
+              }
+            </div>
+              </article>
+            }
+          </div>
+        }
+      </div>
+
+    </section>
+  }
+
+}

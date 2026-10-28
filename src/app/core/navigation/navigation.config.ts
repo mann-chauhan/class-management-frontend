@@ -112,6 +112,11 @@ export const NAVIGATION_CONFIG: Record<string, NavigationSection[]> = {
                     label: 'Leave Requests',
                     route: '/admin/leave',
                     icon: '▣'
+                },
+                {
+                    label: 'Advertisements',
+                    route: '/admin/advertisements',
+                    icon: '▤'
                 }
             ]
         }

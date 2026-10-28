@@ -1,0 +1,134 @@
+<section class="advertisement-page">
+  <div class="advertisement-hero">
+    <div class="advertisement-hero-image">
+      <img src="/assets/images/ads.png" alt="" />
+    </div>
+    <div class="advertisement-hero-content">
+      <span class="advertisement-hero-eyebrow">ADVERTISEMENT MANAGEMENT</span>
+      <app-page-header
+        title="Advertisements"
+        description="Create, publish, and manage tenant advertisements."
+        breadcrumb="Admin / Management"
+        [showAction]="true"
+        actionLabel="Create advertisement"
+        (actionClick)="create()"
+      />
+    </div>
+  </div>
+
+  @if (successMessage) {
+    <div class="advertisement-notification advertisement-success-notification" role="status" aria-live="polite">
+      <span aria-hidden="true">✓</span>
+      <span>{{ successMessage }}</span>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <app-error-state
+      [description]="errorMessage"
+      actionLabel="Retry"
+      [showAction]="true"
+      (actionClick)="load()"
+    />
+  }
+
+  <section class="table-card" aria-labelledby="advertisement-list-title">
+    <div class="table-heading">
+      <div>
+        <h2 id="advertisement-list-title">Advertisement list</h2>
+        <p>Manage campaigns, audiences, and publication status.</p>
+        <p class="page-helper">Open an advertisement to manage its lifecycle.</p>
+      </div>
+      <span class="result-count" aria-label="Advertisement count">
+        {{ totalElements }} {{ totalElements === 1 ? 'advertisement' : 'advertisements' }}
+      </span>
+      <div class="heading-actions">
+        <button type="button" class="secondary-btn" (click)="openSettings()">
+          Settings
+        </button>
+        <button type="button" class="secondary-btn" (click)="load()" [disabled]="loading">
+          {{ loading ? 'Refreshing...' : 'Refresh' }}
+        </button>
+      </div>
+    </div>
+
+    @if (loading) {
+      <div class="state-message"><app-loading message="Loading advertisements..." /></div>
+    } @else if (!advertisements.length) {
+      <app-empty-state
+        title="No advertisements found"
+        description="Create a draft advertisement to begin publishing tenant content."
+        actionLabel="Create advertisement"
+        [showAction]="true"
+        (actionClick)="create()"
+      />
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Advertisement</th>
+              <th>Audience</th>
+              <th>Status</th>
+              <th>Media</th>
+              <th>Version</th>
+              <th class="actions-heading">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (advertisement of advertisements; track trackById($index, advertisement)) {
+              <tr>
+                <td class="advertisement-cell">
+                  <div class="main-cell">{{ advertisement.title }}</div>
+                  @if (advertisement.description) {
+                    <div class="muted-cell">{{ advertisement.description }}</div>
+                  }
+                </td>
+                <td><span class="audience-badge" [class]="'audience-' + advertisement.audience.toLowerCase()">
+                  {{ advertisement.audience }}
+                </span></td>
+                <td>
+                  <span class="status" [ngClass]="statusClass(advertisement.status)">
+                    {{ advertisement.status }}
+                  </span>
+                </td>
+                <td><span class="media-count" aria-label="Media count">{{ advertisement.mediaCount }}</span></td>
+                <td><span class="version-meta">v{{ advertisement.version }}</span></td>
+                <td class="actions-cell">
+                  <div class="row-actions">
+                    <button type="button" class="primary-btn row-open-action" (click)="edit(advertisement)"
+                      [attr.aria-label]="(advertisement.status === 'DRAFT' ? 'Edit ' : 'Open ') + advertisement.title">
+                      {{ advertisement.status === 'DRAFT' ? 'Edit' : 'Open' }}
+                    </button>
+                    <button type="button" class="text-btn danger-btn" [disabled]="busyId === advertisement.id"
+                      [attr.aria-label]="'Delete ' + advertisement.title"
+                      (click)="confirmAction(advertisement, 'delete')">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="list-footer">
+        <span class="footer-count">{{ totalElements }} result{{ totalElements === 1 ? '' : 's' }}</span>
+        <app-pagination
+          [currentPage]="page + 1"
+          [totalItems]="totalElements"
+          [pageSize]="size"
+          (pageChange)="changePage($event)"
+        />
+      </div>
+    }
+  </section>
+</section>
+
+<app-confirmation-dialog
+  [visible]="pendingAction !== null"
+  [title]="pendingAction?.type === 'delete' ? 'Permanently delete advertisement?' : 'Confirm advertisement action'"
+  [message]="pendingAction ? actionMessage(pendingAction.type, pendingAction.advertisement.title) : ''"
+  [confirmLabel]="pendingAction?.type === 'delete' ? 'Delete permanently' : 'Confirm'"
+  (confirmed)="executeAction()"
+  (cancelled)="cancelAction()"
+/>

@@ -197,6 +197,38 @@ export const routes: Routes = [
         data: { roles: ['ADMIN'] }
       },
 
+      {
+        path: 'admin/advertisements/create',
+        loadComponent: () => import('./features/admin/advertisements/advertisement-form/advertisement-form')
+          .then(m => m.AdvertisementFormComponent),
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'] }
+      },
+
+      {
+        path: 'admin/advertisements/settings',
+        loadComponent: () => import('./features/admin/advertisements/advertisement-settings/advertisement-settings')
+          .then(m => m.AdvertisementSettingsComponent),
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'] }
+      },
+
+      {
+        path: 'admin/advertisements/:id/edit',
+        loadComponent: () => import('./features/admin/advertisements/advertisement-form/advertisement-form')
+          .then(m => m.AdvertisementFormComponent),
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'] }
+      },
+
+      {
+        path: 'admin/advertisements',
+        loadComponent: () => import('./features/admin/advertisements/advertisement-list/advertisement-list')
+          .then(m => m.AdvertisementListComponent),
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'] }
+      },
+
       // --------------------- ACADEMIC ----------------------
 
       {
