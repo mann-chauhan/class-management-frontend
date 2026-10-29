@@ -3,6 +3,7 @@ import { of } from 'rxjs';
 
 import { StudentAttendance } from './student-attendance';
 import { ApiService } from '../../../../core/services/api.service';
+import { TokenService } from '../../../../core/auth/token.service';
 
 describe('StudentAttendance', () => {
   let service: StudentAttendance;
@@ -32,6 +33,10 @@ describe('StudentAttendance', () => {
               });
             }
           }
+        },
+        {
+          provide: TokenService,
+          useValue: { getPayload: () => ({ iat: 1 }) }
         }
       ]
     });
@@ -65,5 +70,34 @@ describe('StudentAttendance', () => {
 
     expect(request?.endpoint).toBe('/attendance/my/summary');
     expect(request?.params).toBeUndefined();
+  });
+
+  it('reuses the attendance request within one login session', () => {
+    let calls = 0;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        StudentAttendance,
+        {
+          provide: ApiService,
+          useValue: {
+            get: () => {
+              calls++;
+              return of({ success: true, message: 'ok', data: [] });
+            }
+          }
+        },
+        {
+          provide: TokenService,
+          useValue: { getPayload: () => ({ iat: 1 }) }
+        }
+      ]
+    });
+    const cachedService = TestBed.inject(StudentAttendance);
+
+    cachedService.getMyAttendance().subscribe();
+    cachedService.getMyAttendance().subscribe();
+
+    expect(calls).toBe(1);
   });
 });

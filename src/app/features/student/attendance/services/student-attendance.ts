@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, shareReplay } from 'rxjs';
 
 import { ApiService } from '../../../../core/services/api.service';
 import {
@@ -9,6 +9,7 @@ import {
   AttendancePageResponse
 } from '../../../admin/attendance/models/attendance.model';
 import { AttendanceSummary } from '../models/attendance-summary.model';
+import { TokenService } from '../../../../core/auth/token.service';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -22,11 +23,20 @@ interface ApiResponse<T> {
 export class StudentAttendance {
 
   private readonly api = inject(ApiService);
+  private readonly tokenService = inject(TokenService);
+  private attendanceRequest?: Observable<ApiResponse<Attendance[]>>;
+  private attendanceSessionKey: string | null = null;
 
-  getMyAttendance(): Observable<ApiResponse<Attendance[]>> {
-    return this.api.get<ApiResponse<Attendance[]>>(
-      '/attendance/my'
-    );
+  getMyAttendance(forceRefresh = false): Observable<ApiResponse<Attendance[]>> {
+    const sessionKey = this.tokenService.getPayload()?.iat?.toString() ?? null;
+    if (forceRefresh || !this.attendanceRequest || sessionKey !== this.attendanceSessionKey) {
+      this.attendanceSessionKey = sessionKey;
+      this.attendanceRequest = this.api.get<ApiResponse<Attendance[]>>(
+        '/attendance/my'
+      ).pipe(shareReplay({ bufferSize: 1, refCount: false }));
+    }
+
+    return this.attendanceRequest;
   }
 
   getMyAttendancePage(

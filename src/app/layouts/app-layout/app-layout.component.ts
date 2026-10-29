@@ -19,6 +19,8 @@ import {
 } from '../../core/navigation/navigation.config';
 
 import { GlobalSearchComponent } from '../../shared/components/global-search/global-search.component';
+import { StudentOverviewWizardComponent } from '../../features/student/overview-wizard/student-overview-wizard.component';
+import { StudentOverviewWizardStateService } from '../../core/services/student-overview-wizard-state.service';
 
 import {
   ChangeDetectorRef,
@@ -48,7 +50,8 @@ import {
     RouterLink,
     RouterLinkActive,
     ProfileComponent,
-    GlobalSearchComponent
+    GlobalSearchComponent,
+    StudentOverviewWizardComponent
   ],
   templateUrl: './app-layout.component.html',
   styleUrl: './app-layout.component.scss'
@@ -92,11 +95,13 @@ private readonly notificationPollingInterval = 30_000;
   activeNotificationTab: 'absent' | 'pending' | 'leave' = 'absent';
 
   notificationOpen = false;
+  showStudentOverviewWizard = false;
 
  constructor(
   private readonly tokenService: TokenService,
   private readonly router: Router,
   private readonly authStateService: AuthStateService,
+  private readonly studentOverviewWizardState: StudentOverviewWizardStateService,
   private readonly notificationService: NotificationService,
   private readonly ngZone: NgZone,
   private readonly cdr: ChangeDetectorRef
@@ -104,6 +109,8 @@ private readonly notificationPollingInterval = 30_000;
   this.loadUserInformation();
   this.loadNavigation();
   this.loadAdminNotifications();
+  this.showStudentOverviewWizard =
+    this.studentOverviewWizardState.isRequiredFor(this.tokenService.getRole());
 
   if (this.userRole === 'Admin') {
     this.notificationPollingSubscription = interval(
@@ -113,6 +120,11 @@ private readonly notificationPollingInterval = 30_000;
     });
   }
 }
+
+  onStudentOverviewWizardCompleted(): void {
+    this.showStudentOverviewWizard = false;
+    this.cdr.detectChanges();
+  }
 
 
   // =====================================================

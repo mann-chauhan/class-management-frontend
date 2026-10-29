@@ -2,6 +2,7 @@ import {
   ChangeDetectorRef,
   ChangeDetectionStrategy,
   Component,
+  OnDestroy,
   OnInit,
   inject
 } from '@angular/core';
@@ -15,8 +16,7 @@ import { StudentFee } from '../../../admin/fees/models/student-fee.model';
 
 import { Attendance } from '../../../admin/attendance/models/attendance.model';
 import { AdvertisementDisplayComponent } from '../../../../shared/components/advertisement-display/advertisement-display.component';
-
-
+import { StudentMarksAnalyticsComponent } from '../student-marks-analytics/student-marks-analytics.component';
 
 interface ProfileData {
   id: number;
@@ -42,6 +42,33 @@ interface ProfileResponse {
   errors?: unknown;
 }
 
+export const STUDENT_DASHBOARD_TIME_ZONE = 'Asia/Kolkata';
+
+const GREETING_BOUNDARIES = [5, 12, 17, 21] as const;
+const dashboardClockFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: STUDENT_DASHBOARD_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23'
+});
+
+export function getStudentDashboardGreeting(date: Date = new Date()): string {
+  const hourPart = dashboardClockFormatter
+    .formatToParts(date)
+    .find(part => part.type === 'hour')?.value;
+  const hour = Number(hourPart);
+
+  if (!Number.isFinite(hour)) {
+    return 'Welcome back';
+  }
+
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  if (hour >= 17 && hour < 21) return 'Good evening';
+  return 'Welcome back';
+}
+
 
 @Component({
   selector: 'app-student-dashboard',
@@ -49,7 +76,8 @@ interface ProfileResponse {
 
   imports: [
     CommonModule,
-    AdvertisementDisplayComponent
+    AdvertisementDisplayComponent,
+    StudentMarksAnalyticsComponent
   ],
 
   templateUrl: './student-dashboard.html',
@@ -57,7 +85,7 @@ interface ProfileResponse {
 
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class StudentDashboard implements OnInit {
+export class StudentDashboard implements OnInit, OnDestroy {
 
   // =========================================================
   // DEPENDENCIES
@@ -113,6 +141,10 @@ export class StudentDashboard implements OnInit {
 
   errorMessage = '';
 
+  greeting = 'Welcome back';
+
+  private greetingTimer: ReturnType<typeof setTimeout> | null = null;
+
 
   // =========================================================
   // LIFECYCLE
@@ -120,11 +152,22 @@ export class StudentDashboard implements OnInit {
 
   ngOnInit(): void {
 
+    this.updateGreeting();
+
     this.loadProfile();
 
     this.loadAttendance();
 
     this.loadFees();
+
+  }
+
+  ngOnDestroy(): void {
+
+    if (this.greetingTimer) {
+      clearTimeout(this.greetingTimer);
+      this.greetingTimer = null;
+    }
 
   }
 
@@ -264,6 +307,46 @@ export class StudentDashboard implements OnInit {
       this.feesLoading;
 
     this.cdr.markForCheck();
+
+  }
+
+
+  // =========================================================
+  // GREETING
+  // =========================================================
+
+  private updateGreeting(): void {
+
+    const now = new Date();
+    this.greeting = getStudentDashboardGreeting(now);
+
+    if (this.greetingTimer) {
+      clearTimeout(this.greetingTimer);
+    }
+
+    const clockParts = dashboardClockFormatter
+      .formatToParts(now)
+      .reduce<Record<string, number>>((parts, part) => {
+        if (part.type === 'hour' || part.type === 'minute' || part.type === 'second') {
+          parts[part.type] = Number(part.value);
+        }
+        return parts;
+      }, {});
+
+    const hour = clockParts['hour'] ?? 0;
+    const minute = clockParts['minute'] ?? 0;
+    const second = clockParts['second'] ?? 0;
+    const nextBoundary = GREETING_BOUNDARIES.find(boundary => boundary > hour)
+      ?? GREETING_BOUNDARIES[0] + 24;
+    const millisecondsUntilBoundary = (
+      ((nextBoundary - hour) * 60 - minute) * 60 - second
+    ) * 1000 - now.getMilliseconds();
+
+    this.greetingTimer = setTimeout(() => {
+      this.greetingTimer = null;
+      this.updateGreeting();
+      this.cdr.markForCheck();
+    }, Math.max(millisecondsUntilBoundary + 50, 50));
 
   }
 

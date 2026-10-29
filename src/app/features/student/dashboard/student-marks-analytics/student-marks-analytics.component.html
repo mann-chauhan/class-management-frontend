@@ -1,0 +1,97 @@
+<section class="dashboard-card marks-analytics-card">
+  <div class="card-header">
+    <div>
+      <span class="card-eyebrow">MARKS ANALYTICS</span>
+      <h2>Academic performance</h2>
+      <p>Your published exam performance across all available results</p>
+    </div>
+    <a class="view-link" routerLink="/student/exams">View exam results →</a>
+  </div>
+
+  @if (marksLoading) {
+  <div class="analytics-message" aria-live="polite">
+    <div class="loading-spinner"></div>
+    <span>Loading marks analytics...</span>
+  </div>
+  } @else if (marksError) {
+  <div class="analytics-message analytics-error" role="alert">
+    <strong>We couldn't load marks analytics.</strong>
+    <span>{{ marksError }}</span>
+    <button type="button" class="analytics-retry" (click)="retryMarks()">Retry</button>
+  </div>
+  } @else if (!marks.length) {
+  <div class="analytics-message analytics-empty">
+    <strong>No published exam results yet</strong>
+    <span>Your marks analytics will appear here when published results are available.</span>
+  </div>
+  } @else {
+  <div class="marks-summary-grid">
+    <article class="marks-summary-card marks-summary-primary">
+      <span>Overall average percentage</span>
+      @if (overallMarksPercentage !== null) {
+      <strong>{{ overallMarksPercentage | number:'1.1-1' }}%</strong>
+      <small>Weighted across eligible scored exams</small>
+      } @else {
+      <strong class="analytics-no-value">—</strong>
+      <small>No eligible scored results yet</small>
+      }
+    </article>
+    <article class="marks-summary-card"><span>Eligible scored exams</span><strong>{{ eligibleScoredExamCount }}</strong><small>Valid score and maximum marks</small></article>
+    <article class="marks-summary-card"><span>Pending results</span><strong>{{ pendingExamCount }}</strong><small>Awaiting published marks</small></article>
+    <article class="marks-summary-card"><span>Subjects assessed</span><strong>{{ subjectsAssessed }}</strong><small>Subjects with scored exams</small></article>
+  </div>
+
+  <div class="marks-analytics-grid">
+    <article class="marks-panel subject-performance-panel">
+      <div class="marks-panel-header"><div><strong>Subject performance</strong><span>Weighted average by subject</span></div></div>
+      @if (!subjectAverages.length) {
+      <div class="panel-empty">No eligible scored subjects yet.</div>
+      } @else {
+      <div class="dashboard-subject-list">
+        @for (subject of subjectAverages; track subject.subjectKey) {
+        <div class="dashboard-subject-row">
+          <div class="dashboard-subject-heading"><div><strong>{{ subject.subjectName }}</strong>@if (subject.subjectCode) { <span>{{ subject.subjectCode }}</span> }</div><strong>{{ subject.averagePercentage | number:'1.1-1' }}%</strong></div>
+          <div class="dashboard-progress-track" role="progressbar" [attr.aria-label]="subject.subjectName + ' average percentage'" [attr.aria-valuenow]="subject.averagePercentage" aria-valuemin="0" aria-valuemax="100"><span class="dashboard-progress-value" [style.width.%]="progressWidth(subject.averagePercentage)"></span></div>
+          <small>{{ subject.obtainedMarks }} / {{ subject.maximumMarks }} marks</small>
+        </div>
+        }
+      </div>
+      }
+    </article>
+
+    <article class="marks-panel marks-trend-panel">
+      <div class="marks-panel-header"><div><strong>Exam performance trend</strong><span>Eligible scored exams by date</span></div></div>
+      @if (marksTrend.length < 2) {
+      <div class="panel-empty">At least two eligible scored exams are needed to show a trend.</div>
+      } @else {
+      <div class="marks-chart-shell"><canvas #marksTrendChart aria-hidden="true"></canvas></div>
+      <div class="marks-trend-summary" aria-label="Text summary of exam performance trend">
+        @for (point of marksTrend; track point.result.examId) { <span>{{ point.result.title }}: {{ point.percentage | number:'1.1-1' }}%</span> }
+      </div>
+      }
+    </article>
+  </div>
+
+  <article class="marks-panel recent-results-panel">
+    <div class="marks-panel-header"><div><strong>Recent exam results</strong><span>Latest published results from your complete marks list</span></div><a class="view-link" routerLink="/student/exams">View all →</a></div>
+    <div class="dashboard-results-list">
+      @for (result of recentExamResults; track result.examId) {
+      <div class="dashboard-result-row">
+        <div class="dashboard-result-name"><strong>{{ result.title }}</strong><span>{{ result.subjectName }} · {{ formatShortDate(result.examDate) }}</span></div>
+        <strong class="dashboard-result-score">@if (isDisplayedScore(result)) { {{ result.score }} / {{ result.maximumMarks }} } @else { <span class="analytics-muted">Not scored</span> }</strong>
+        <span class="dashboard-result-status" [class]="'dashboard-status-' + result.markStatus.toLowerCase()">{{ markStatusLabel(result.markStatus) }}</span>
+      </div>
+      }
+    </div>
+  </article>
+
+  <article class="marks-panel status-breakdown-panel">
+    <div class="marks-panel-header"><div><strong>Result status breakdown</strong><span>Status counts remain separate from score calculations</span></div></div>
+    <div class="dashboard-status-grid">
+      @for (item of statusBreakdown; track item.status) {
+      <div class="dashboard-status-item"><span class="dashboard-status-dot" [class]="'dashboard-dot-' + item.status.toLowerCase()"></span><span>{{ markStatusLabel(item.status) }}</span><strong>{{ item.count }}</strong></div>
+      }
+    </div>
+  </article>
+  }
+</section>

@@ -451,4 +451,10 @@
   </app-profile>
   }
 
+  @defer (when showStudentOverviewWizard) {
+    @if (showStudentOverviewWizard) {
+    <app-student-overview-wizard (completed)="onStudentOverviewWizardCompleted()" />
+    }
+  }
+
 </div>

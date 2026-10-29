@@ -23,7 +23,7 @@
                 </span>
 
                 <h1>
-                    Good morning, {{ studentName }} 👋
+                    {{ greeting }}, {{ studentName }} 👋
                 </h1>
 
                 <p>
@@ -583,6 +583,11 @@
 
 
     </section>
+
+
+    @defer (on immediate) {
+    <app-student-marks-analytics />
+    }
 
 
     <!-- =====================================================
