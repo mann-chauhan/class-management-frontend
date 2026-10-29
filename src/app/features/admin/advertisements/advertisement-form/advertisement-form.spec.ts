@@ -206,8 +206,8 @@ describe('AdvertisementFormComponent preview', () => {
     fixture.detectChanges();
 
     const image = fixture.nativeElement.querySelector(
-  '.advertisement-media-frame img:not(.advertisement-media-backdrop)'
-) as HTMLImageElement;
+      '.advertisement-media-frame img:not(.advertisement-media-backdrop)'
+    ) as HTMLImageElement;
 
     expect(image.src).toContain('blob:hero-preview');
     expect(image.alt).toBe('hero.png');
