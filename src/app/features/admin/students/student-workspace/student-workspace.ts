@@ -8,7 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { StudentDetails } from '../models/student.model';
-import { StudentService } from '../services/student.service';
+import { StudentMarkResult, StudentService } from '../services/student.service';
 import { Attendance } from '../../attendance/models/attendance.model';
 import { AttendanceService } from '../../attendance/services/attendance.service';
 import { StudentFee } from '../../fees/models/student-fee.model';
@@ -28,7 +28,8 @@ type WorkspaceTab =
     | 'personal'
     | 'academic'
     | 'attendance'
-    | 'fees';
+    | 'fees'
+    | 'marks';
 
 @Component({
     selector: 'app-student-workspace',
@@ -62,6 +63,14 @@ export class StudentWorkspace implements OnInit {
     attendance: Attendance[] = [];
     attendanceLoading = false;
     attendanceError = '';
+
+    marks: StudentMarkResult[] = [];
+    marksLoading = false;
+    marksError = '';
+    marksPage = 0;
+    marksTotalPages = 0;
+    marksTotalElements = 0;
+    marksLoaded = false;
 
     loading = true;
     errorMessage = '';
@@ -232,6 +241,47 @@ receiptErrorMessage = '';
 
     setActiveTab(tab: WorkspaceTab): void {
         this.activeTab = tab;
+        if (tab === 'marks' && !this.marksLoaded && !this.marksLoading) {
+            this.loadMarks();
+        }
+    }
+
+    loadMarks(page = 0): void {
+        if (!this.studentId) return;
+        this.marksLoading = true;
+        this.marksError = '';
+        this.studentService.getStudentMarks(this.studentId, page).subscribe({
+            next: response => {
+                this.marks = response.data?.content ?? [];
+                this.marksPage = response.data?.number ?? page;
+                this.marksTotalPages = response.data?.totalPages ?? 0;
+                this.marksTotalElements = response.data?.totalElements ?? 0;
+                this.marksLoaded = true;
+                this.marksLoading = false;
+                this.cdr.detectChanges();
+            },
+            error: error => {
+                this.marks = [];
+                this.marksLoading = false;
+                this.marksError = error?.error?.message ||
+                    'Marks information is unavailable.';
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    retryMarks(): void { this.marksLoaded = false; this.loadMarks(this.marksPage); }
+
+    marksPageChange(page: number): void {
+        if (page < 0 || page >= this.marksTotalPages || page === this.marksPage) return;
+        this.loadMarks(page);
+    }
+
+    markStatusLabel(status: StudentMarkResult['markStatus']): string {
+        return {
+            SCORED: 'Scored', PENDING: 'Pending', ABSENT: 'Absent',
+            EXEMPT: 'Exempt', NOT_APPLICABLE: 'Not applicable'
+        }[status];
     }
 
     goBack(): void {

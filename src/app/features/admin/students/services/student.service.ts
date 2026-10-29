@@ -25,6 +25,25 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+export interface StudentMarkResult {
+  examId: number;
+  title: string;
+  examDate: string;
+  maximumMarks: number;
+  subjectName: string;
+  subjectCode: string;
+  markStatus: 'PENDING' | 'SCORED' | 'ABSENT' | 'EXEMPT' | 'NOT_APPLICABLE';
+  score: number | null;
+}
+
+export interface StudentMarksPage {
+  content: StudentMarkResult[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
 export interface StudentImportError {
   rowNumber: number;
   field: string;
@@ -279,6 +298,22 @@ getStudents(
 
     return this.api.get<ApiResponse<StudentDetails>>(
       `/students/${id}`
+    );
+  }
+
+  getStudentMarks(
+    id: number,
+    page = 0,
+    size = 20
+  ): Observable<ApiResponse<StudentMarksPage>> {
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size)
+      .set('sortBy', 'examDate')
+      .set('sortDirection', 'desc');
+
+    return this.api.get<ApiResponse<StudentMarksPage>>(
+      `/students/${id}/marks`, params
     );
   }
 

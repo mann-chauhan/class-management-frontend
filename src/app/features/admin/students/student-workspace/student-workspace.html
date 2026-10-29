@@ -116,6 +116,11 @@
             Fees
         </button>
 
+        <button type="button" class="workspace-tab" [class.active]="activeTab === 'marks'"
+            (click)="setActiveTab('marks')">
+            Marks
+        </button>
+
     </nav>
 
     <!-- Content -->
@@ -304,6 +309,17 @@
                         Open
                     </button>
 
+                </div>
+
+                <div class="module-summary-card">
+                    <div class="module-summary-icon">%</div>
+                    <div class="module-summary-content">
+                        <strong>Marks</strong>
+                        @if (!marksLoaded) { <span>View exam results</span> }
+                        @else if (marksTotalElements === 0) { <span>No marks available</span> }
+                        @else { <span>{{ marksTotalElements }} exam result{{ marksTotalElements === 1 ? '' : 's' }}</span> }
+                    </div>
+                    <button type="button" (click)="setActiveTab('marks')">Open</button>
                 </div>
 
             </div>
@@ -738,6 +754,60 @@
                 }
 
             </div>
+            }
+        </section>
+        }
+
+        @case ('marks') {
+        <section class="content-section marks-section">
+            <div class="section-heading">
+                <div>
+                    <h2>Marks</h2>
+                    <p>View exam results across all subjects for this student.</p>
+                </div>
+            </div>
+
+            @if (marksLoading) {
+            <div class="workspace-module-loading" aria-live="polite">
+                <div class="loading-spinner"></div><span>Loading marks...</span>
+            </div>
+            } @else if (marksError) {
+            <div class="marks-message" role="alert">
+                <span>{{ marksError }}</span>
+                <button type="button" (click)="retryMarks()">Retry</button>
+            </div>
+            } @else if (!marks.length) {
+            <div class="module-placeholder">
+                <div class="placeholder-icon">%</div>
+                <h3>No marks available</h3>
+                <p>No published exam results are available for this student yet.</p>
+            </div>
+            } @else {
+            <div class="marks-table-wrapper">
+                <table class="marks-table">
+                    <caption class="visually-hidden">Exam results for {{ studentName }}</caption>
+                    <thead><tr><th>Subject</th><th>Exam</th><th>Exam Date</th><th>Score</th><th>Maximum Marks</th><th>Status</th></tr></thead>
+                    <tbody>
+                        @for (mark of marks; track mark.examId) {
+                        <tr>
+                            <td><strong>{{ mark.subjectName || '—' }}</strong><small>{{ mark.subjectCode || '' }}</small></td>
+                            <td>{{ mark.title }}</td>
+                            <td>{{ mark.examDate }}</td>
+                            <td>{{ mark.markStatus === 'SCORED' && mark.score !== null ? mark.score : '—' }}</td>
+                            <td>{{ mark.maximumMarks }}</td>
+                            <td><span class="mark-status" [class]="'mark-status ' + mark.markStatus.toLowerCase()">{{ markStatusLabel(mark.markStatus) }}</span></td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (marksTotalPages > 1) {
+            <div class="marks-pagination" aria-label="Marks pagination">
+                <button type="button" [disabled]="marksPage === 0" (click)="marksPageChange(marksPage - 1)">Previous</button>
+                <span>Page {{ marksPage + 1 }} of {{ marksTotalPages }}</span>
+                <button type="button" [disabled]="marksPage >= marksTotalPages - 1" (click)="marksPageChange(marksPage + 1)">Next</button>
+            </div>
+            }
             }
         </section>
         }
