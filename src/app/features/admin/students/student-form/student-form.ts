@@ -14,6 +14,9 @@ import {
 
 import {
   FormBuilder,
+  FormGroup,
+  AbstractControl,
+  ValidationErrors,
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
@@ -53,11 +56,12 @@ import {
 
 import {
   CreateStudentRequest,
+  CreateInitialStudentSchoolPerformanceRequest,
   UpdateStudentRequest
 } from '../models/student.model';
 
 import {
-  School
+  School,
 } from '../../academic/schools/school.model';
 
 import {
@@ -86,6 +90,10 @@ import { FeeStructure } from '../../fees/models/fee-structure.model';
   styleUrl: './student-form.scss'
 })
 export class StudentForm implements OnInit {
+
+  static readonly MAX_INITIAL_PERFORMANCE_RECORDS = 50;
+
+  private static readonly MARKS_FORMAT = /^\d{1,6}(\.\d{1,2})?$/;
 
   @Input() popupMode = false;
 
@@ -184,9 +192,17 @@ export class StudentForm implements OnInit {
 
   schools: School[] = [];
 
+  initialPerformanceNotice = '';
+
+  private acceptedSchoolId: number | null = null;
+
   boardMedia: BoardMedium[] = [];
 
   branches: Branch[] = [];
+
+  initialPerformanceRecords = this.fb.array<FormGroup>([], [
+    Validators.maxLength(StudentForm.MAX_INITIAL_PERFORMANCE_RECORDS)
+  ]);
 
 
   // =========================================================
@@ -275,7 +291,9 @@ export class StudentForm implements OnInit {
 
     branchId: [
       null as number | null
-    ]
+    ],
+
+    schoolPerformanceRecords: this.initialPerformanceRecords
 
   });
 
@@ -297,6 +315,29 @@ export class StudentForm implements OnInit {
     if (!this.popupMode) {
       this.checkEditMode();
     }
+
+    this.acceptedSchoolId = this.studentForm.get('schoolId')?.value ?? null;
+    this.studentForm.get('schoolId')?.valueChanges.subscribe(value => {
+      const nextSchoolId = value == null ? null : Number(value);
+      if (this.initialPerformanceRecords.length === 0 || nextSchoolId === this.acceptedSchoolId) {
+        this.acceptedSchoolId = nextSchoolId;
+        this.initialPerformanceNotice = '';
+        return;
+      }
+
+      const confirmed = window.confirm(
+        "Changing the student's school will also change the school associated with all pending initial exam records. Continue?"
+      );
+      if (confirmed) {
+        this.acceptedSchoolId = nextSchoolId;
+        this.initialPerformanceNotice = nextSchoolId === null
+          ? 'Select the student\'s school before submitting the pending exam records.'
+          : '';
+      } else {
+        this.studentForm.get('schoolId')?.setValue(this.acceptedSchoolId, { emitEvent: false });
+      }
+      this.cdr.detectChanges();
+    });
 
   }
 
@@ -454,6 +495,121 @@ export class StudentForm implements OnInit {
       });
 
   }
+
+  addInitialPerformanceRecord(): void {
+
+    if (this.initialPerformanceRecords.length >= StudentForm.MAX_INITIAL_PERFORMANCE_RECORDS) {
+      return;
+    }
+
+    if (this.studentForm.get('schoolId')?.value == null) {
+      this.initialPerformanceNotice = "Select the student's school above before adding exam records.";
+      return;
+    }
+
+    this.initialPerformanceNotice = '';
+
+    this.initialPerformanceRecords.push(
+      this.fb.group({
+        examName: ['', [Validators.required, Validators.maxLength(160)]],
+        examDate: [null as string | null],
+        maximumMarks: [null as number | null, [
+          Validators.required,
+          Validators.min(0.01),
+          this.marksFormatValidator
+        ]],
+        obtainedMarks: [null as number | null, [
+          Validators.required,
+          Validators.min(0),
+          this.marksFormatValidator
+        ]]
+      }, {
+        validators: this.obtainedMarksWithinMaximumValidator
+      })
+    );
+  }
+
+  canAddInitialPerformanceRecord(): boolean {
+    return this.studentForm.get('schoolId')?.value != null
+      && this.initialPerformanceRecords.length < StudentForm.MAX_INITIAL_PERFORMANCE_RECORDS;
+  }
+
+  selectedSchoolName(): string {
+    const schoolId = Number(this.studentForm.get('schoolId')?.value);
+    return this.schools.find(school => school.id === schoolId)?.name ?? 'No school selected';
+  }
+
+  private initialPerformanceSchoolId(): number | null {
+    const value = this.studentForm.get('schoolId')?.value;
+    return value == null ? null : Number(value);
+  }
+
+  private hasInitialPerformanceSchool(): boolean {
+    return this.initialPerformanceSchoolId() !== null;
+  }
+
+  private validateInitialPerformanceSchool(): boolean {
+    if (this.initialPerformanceRecords.length > 0 && !this.hasInitialPerformanceSchool()) {
+      this.initialPerformanceNotice = "Select the student's school before submitting the pending exam records.";
+      this.studentForm.get('schoolId')?.markAsTouched();
+      return false;
+    }
+    return true;
+  }
+
+  removeInitialPerformanceRecord(index: number): void {
+    this.initialPerformanceRecords.removeAt(index);
+  }
+
+  isInitialPerformanceFieldInvalid(
+    index: number,
+    fieldName: string
+  ): boolean {
+
+    const control = this.initialPerformanceRecords.at(index).get(fieldName);
+
+    return !!control && control.invalid && (control.touched || control.dirty);
+  }
+
+  isObtainedMarksInvalid(index: number): boolean {
+
+    const record = this.initialPerformanceRecords.at(index);
+    const obtainedMarks = record.get('obtainedMarks');
+
+    return !!obtainedMarks && (
+      (obtainedMarks.invalid && (obtainedMarks.touched || obtainedMarks.dirty)) ||
+      (record.hasError('obtainedExceedsMaximum') && (record.touched || record.dirty))
+    );
+  }
+
+  private readonly marksFormatValidator = (
+    control: AbstractControl
+  ): ValidationErrors | null => {
+
+    if (control.value === null || control.value === '') {
+      return null;
+    }
+
+    return StudentForm.MARKS_FORMAT.test(String(control.value))
+      ? null
+      : { marksFormat: true };
+  };
+
+  private readonly obtainedMarksWithinMaximumValidator = (
+    control: AbstractControl
+  ): ValidationErrors | null => {
+
+    const maximumMarks = Number(control.get('maximumMarks')?.value);
+    const obtainedMarks = Number(control.get('obtainedMarks')?.value);
+
+    if (!Number.isFinite(maximumMarks) || !Number.isFinite(obtainedMarks)) {
+      return null;
+    }
+
+    return obtainedMarks > maximumMarks
+      ? { obtainedExceedsMaximum: true }
+      : null;
+  };
 
   loadBoardMedia(): void {
     this.boardMediumService
@@ -849,7 +1005,7 @@ export class StudentForm implements OnInit {
 
 
     // Validate form
-    if (this.studentForm.invalid) {
+    if (!this.validateInitialPerformanceSchool() || this.studentForm.invalid) {
 
       this.studentForm.markAllAsTouched();
 
@@ -891,6 +1047,15 @@ export class StudentForm implements OnInit {
      * Backend generates the roll number
      * automatically during CREATE.
      */
+
+    const initialRecords =
+      this.initialPerformanceRecords.getRawValue()
+        .map(record => ({
+          examName: record['examName'].trim(),
+          examDate: record['examDate'] || null,
+          maximumMarks: Number(record['maximumMarks']),
+          obtainedMarks: Number(record['obtainedMarks'])
+        } satisfies CreateInitialStudentSchoolPerformanceRequest));
 
     const request: CreateStudentRequest = {
 
@@ -944,7 +1109,11 @@ export class StudentForm implements OnInit {
         this.discountType,
 
       discountValue:
-        Number(this.discountValue) || 0
+        Number(this.discountValue) || 0,
+
+      ...(initialRecords.length > 0
+        ? { schoolPerformanceRecords: initialRecords }
+        : {})
 
     };
 

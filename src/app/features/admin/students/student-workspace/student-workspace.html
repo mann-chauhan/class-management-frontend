@@ -121,6 +121,11 @@
             Marks
         </button>
 
+        <button type="button" class="workspace-tab" [class.active]="activeTab === 'school-performance'"
+            (click)="setActiveTab('school-performance')">
+            School Performance
+        </button>
+
     </nav>
 
     <!-- Content -->
@@ -320,6 +325,22 @@
                         @else { <span>{{ marksTotalElements }} exam result{{ marksTotalElements === 1 ? '' : 's' }}</span> }
                     </div>
                     <button type="button" (click)="setActiveTab('marks')">Open</button>
+                </div>
+
+                <div class="module-summary-card">
+                    <div class="module-summary-icon">▣</div>
+                    <div class="module-summary-content">
+                        <strong>School Performance</strong>
+                        @if (!schoolPerformanceLoaded) {
+                        <span>View external-school history</span>
+                        } @else if (!schoolPerformanceSummary?.totalExams) {
+                        <span>No performance records</span>
+                        } @else {
+                        <span>{{ schoolPerformanceSummary?.totalExams }} exam{{ schoolPerformanceSummary?.totalExams === 1 ? '' : 's' }}</span>
+                        <small>{{ schoolPerformanceSummary?.overallAveragePercentage | number:'1.2-2' }}% weighted average</small>
+                        }
+                    </div>
+                    <button type="button" (click)="openSchoolPerformanceTab()">Open</button>
                 </div>
 
             </div>
@@ -812,6 +833,122 @@
         </section>
         }
 
+        @case ('school-performance') {
+        <section class="content-section school-performance-section">
+            <div class="section-heading school-performance-heading">
+                <div>
+                    <h2>School Performance</h2>
+                    <p>Historical exam performance from the student's external schools.</p>
+                </div>
+                <button type="button" class="school-performance-primary-action"
+                    (click)="openAddSchoolPerformance()">
+                    + Add Record
+                </button>
+            </div>
+
+            @if (schoolPerformanceLoading) {
+            <div class="workspace-module-loading" aria-live="polite">
+                <div class="loading-spinner"></div>
+                <span>Loading school performance...</span>
+            </div>
+            } @else if (schoolPerformanceError && !schoolPerformanceLoaded) {
+            <div class="school-performance-message" role="alert">
+                <span>{{ schoolPerformanceError }}</span>
+                <button type="button" (click)="retrySchoolPerformance()">Retry</button>
+            </div>
+            } @else {
+            <div class="school-performance-summary-grid">
+                <div class="school-performance-stat school-performance-stat-primary">
+                    <span>Total Exams</span>
+                    <strong>{{ schoolPerformanceSummary?.totalExams ?? 0 }}</strong>
+                </div>
+                <div class="school-performance-stat">
+                    <span>Obtained Marks</span>
+                    <strong>{{ schoolPerformanceSummary?.totalObtainedMarks ?? 0 | number:'1.0-2' }}</strong>
+                </div>
+                <div class="school-performance-stat">
+                    <span>Maximum Marks</span>
+                    <strong>{{ schoolPerformanceSummary?.totalMaximumMarks ?? 0 | number:'1.0-2' }}</strong>
+                </div>
+                <div class="school-performance-stat">
+                    <span>Weighted Average</span>
+                    <strong>{{ schoolPerformanceSummary?.overallAveragePercentage === null || schoolPerformanceSummary?.overallAveragePercentage === undefined ? '—' : (schoolPerformanceSummary?.overallAveragePercentage | number:'1.2-2') + '%' }}</strong>
+                </div>
+                <div class="school-performance-stat">
+                    <span>Highest Exam</span>
+                    <strong>{{ schoolPerformanceSummary?.highestExamPercentage === null || schoolPerformanceSummary?.highestExamPercentage === undefined ? '—' : (schoolPerformanceSummary?.highestExamPercentage | number:'1.2-2') + '%' }}</strong>
+                </div>
+                <div class="school-performance-stat">
+                    <span>Schools Represented</span>
+                    <strong>{{ schoolPerformanceSummary?.schoolsRepresented ?? 0 }}</strong>
+                </div>
+            </div>
+
+            @if (schoolPerformanceError) {
+            <div class="school-performance-message school-performance-message-inline" role="alert">
+                {{ schoolPerformanceError }}
+            </div>
+            }
+
+            @if (!schoolPerformanceRecords.length) {
+            <div class="module-placeholder school-performance-empty-state">
+                <div class="placeholder-icon">▣</div>
+                <h3>No school performance records</h3>
+                <p>Add a historical exam record to keep the student's external-school history together.</p>
+                <button type="button" class="school-performance-primary-action" (click)="openAddSchoolPerformance()">
+                    Add First Record
+                </button>
+            </div>
+            } @else {
+            <div class="school-performance-table-wrapper">
+                <table class="school-performance-table">
+                    <caption class="visually-hidden">School performance records for {{ studentName }}</caption>
+                    <thead>
+                        <tr>
+                            <th>School</th>
+                            <th>Exam</th>
+                            <th>Date</th>
+                            <th>Obtained</th>
+                            <th>Maximum</th>
+                            <th>Percentage</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (record of schoolPerformanceRecords; track record.id) {
+                        <tr>
+                            <td>{{ record.schoolName }}</td>
+                            <td>{{ record.examName }}</td>
+                            <td>{{ record.examDate || '—' }}</td>
+                            <td>{{ record.obtainedMarks | number:'1.0-2' }}</td>
+                            <td>{{ record.maximumMarks | number:'1.0-2' }}</td>
+                            <td>{{ record.percentage | number:'1.2-2' }}%</td>
+                            <td class="school-performance-actions">
+                                <button type="button" (click)="openEditSchoolPerformance(record)">Edit</button>
+                                <button type="button" class="danger" [disabled]="schoolPerformanceDeletingId === record.id"
+                                    (click)="deleteSchoolPerformance(record)">
+                                    {{ schoolPerformanceDeletingId === record.id ? 'Deleting…' : 'Delete' }}
+                                </button>
+                            </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (schoolPerformanceTotalPages > 1) {
+            <div class="school-performance-pagination" aria-label="School performance pagination">
+                <button type="button" [disabled]="schoolPerformancePage === 0"
+                    (click)="schoolPerformancePageChange(schoolPerformancePage - 1)">Previous</button>
+                <span>Page {{ schoolPerformancePage + 1 }} of {{ schoolPerformanceTotalPages }}</span>
+                <button type="button" [disabled]="schoolPerformancePage >= schoolPerformanceTotalPages - 1"
+                    (click)="schoolPerformancePageChange(schoolPerformancePage + 1)">Next</button>
+            </div>
+            }
+            }
+            }
+        </section>
+        }
+
         }
 
     </main>
@@ -1252,5 +1389,98 @@
 
     </div>
 
+</div>
+}
+
+@if (schoolPerformanceModalOpen) {
+<div class="school-performance-overlay" (click)="closeSchoolPerformanceModal()">
+    <div class="school-performance-modal" role="dialog" aria-modal="true"
+        aria-labelledby="schoolPerformanceModalTitle" (click)="$event.stopPropagation()">
+        <div class="school-performance-modal-header">
+            <div>
+                <h2 id="schoolPerformanceModalTitle">
+                    {{ schoolPerformanceEditingRecord ? 'Edit School Performance' : 'Add School Performance' }}
+                </h2>
+                <p>Record an external-school examination for {{ studentName }}.</p>
+            </div>
+            <button type="button" class="school-performance-close" aria-label="Close school performance form"
+                (click)="closeSchoolPerformanceModal()">×</button>
+        </div>
+
+        <form class="school-performance-form" (ngSubmit)="saveSchoolPerformance()">
+            @if (schoolPerformanceFormError) {
+            <div class="school-performance-form-error" role="alert">
+                <span>{{ schoolPerformanceFormError }}</span>
+                @if (schoolPerformanceConflict) {
+                <button type="button" (click)="reloadSchoolPerformanceAfterConflict()">
+                    Reload record
+                </button>
+                }
+            </div>
+            }
+
+            <div class="school-performance-form-grid">
+                <label>
+                    School <span>*</span>
+                    <select name="schoolId" [(ngModel)]="schoolPerformanceForm.schoolId"
+                        [disabled]="schoolPerformanceSaving || schoolPerformanceSchoolsLoading" required>
+                        <option [ngValue]="null">Select school</option>
+                        @for (school of schoolPerformanceSchools; track school.id) {
+                        <option [ngValue]="school.id">
+                            {{ school.name }}{{ school.code ? ' (' + school.code + ')' : '' }}
+                        </option>
+                        }
+                    </select>
+                </label>
+
+                <label>
+                    Exam name <span>*</span>
+                    <input name="examName" type="text" maxlength="160"
+                        [(ngModel)]="schoolPerformanceForm.examName"
+                        [disabled]="schoolPerformanceSaving" required />
+                </label>
+
+                <label>
+                    Exam date <small>(Optional)</small>
+                    <input name="examDate" type="date" [(ngModel)]="schoolPerformanceForm.examDate"
+                        [max]="schoolPerformanceMaxExamDate"
+                        [disabled]="schoolPerformanceSaving" />
+                </label>
+
+                @if (isSchoolPerformanceDateInvalid()) {
+                <small class="school-performance-date-error" role="alert">
+                    Future exam dates are not allowed. Please select today or an earlier date.
+                </small>
+                }
+
+                <label>
+                    Maximum marks <span>*</span>
+                    <input name="maximumMarks" type="number" min="0.01" step="0.01" inputmode="decimal"
+                        [(ngModel)]="schoolPerformanceForm.maximumMarks"
+                        [disabled]="schoolPerformanceSaving" required />
+                </label>
+
+                <label>
+                    Obtained marks <span>*</span>
+                    <input name="obtainedMarks" type="number" min="0" step="0.01" inputmode="decimal"
+                        [(ngModel)]="schoolPerformanceForm.obtainedMarks"
+                        [disabled]="schoolPerformanceSaving" required />
+                </label>
+            </div>
+
+            <small class="school-performance-form-hint">
+                Marks allow up to 6 integer digits and 2 decimal places. Obtained marks cannot exceed maximum marks.
+            </small>
+
+            <div class="school-performance-modal-footer">
+                <button type="button" class="secondary-button" [disabled]="schoolPerformanceSaving"
+                    (click)="closeSchoolPerformanceModal()">Cancel</button>
+                <button type="submit" class="school-performance-primary-action"
+                    [disabled]="schoolPerformanceSaving || isSchoolPerformanceDateInvalid()">
+                    {{ schoolPerformanceSaving ? 'Saving…' : (schoolPerformanceEditingRecord ? 'Save Changes' : 'Add Record') }}
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 }

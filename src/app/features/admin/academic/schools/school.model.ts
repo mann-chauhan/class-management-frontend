@@ -10,6 +10,12 @@ export interface School {
   updatedAt: string;
 }
 
+export interface SchoolOption {
+  id: number;
+  name: string;
+  code: string;
+}
+
 export interface CreateSchoolRequest {
   name: string;
   code?: string;

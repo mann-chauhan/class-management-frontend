@@ -25,9 +25,7 @@ import { AdminDetailsComponent } from './features/super-admin/admins/admin-detai
 
 // ADMIN
 import { AdminDashboard } from './features/admin/dashboard/admin-dashboard/admin-dashboard';
-import { StudentsInsider } from './features/admin/insider/students-insider/students-insider';
 import { FeesInsider } from './features/admin/insider/fees-insider/fees-insider';
-
 import { AcademicYearsComponent } from './features/admin/academic/academic-years/academic-years';
 import { ClassesComponent } from './features/admin/academic/classes/classes';
 import { SubjectsComponent } from './features/admin/academic/subjects/subjects';
@@ -37,8 +35,6 @@ import { TeacherList } from './features/admin/teachers/teacher-list/teacher-list
 import { TeacherDetails } from './features/admin/teachers/teacher-details/teacher-details';
 import { TeacherForm } from './features/admin/teachers/teacher-form/teacher-form';
 
-
-import { StudentForm } from './features/admin/students/student-form/student-form';
 
 import { TeacherRoleList } from './features/admin/teacher-roles/teacher-role-list/teacher-role-list';
 import { TeacherRoleForm } from './features/admin/teacher-roles/teacher-role-form/teacher-role-form';
@@ -55,8 +51,6 @@ import { AttendanceOverview } from './features/admin/attendance/attendance-overv
 import { TeacherAssignmentList as AdminTeacherAssignmentList } from './features/admin/teacher-assignments/teacher-assignment-list/teacher-assignment-list';
 import { TeacherAssignmentForm as AdminTeacherAssignmentForm } from './features/admin/teacher-assignments/teacher-assignment-form/teacher-assignment-form';
 import { TeacherAssignmentView as AdminTeacherAssignmentView } from './features/admin/teacher-assignments/teacher-assignment-view/teacher-assignment-view';
-import { StudentWorkspace } from './features/admin/students/student-workspace/student-workspace';
-import { AcademicWorkspaceComponent } from './features/admin/academic/academic-workspace/academic-workspace';
 import { TeacherManagementComponent } from './features/admin/teachers/teacher-management/teacher-management';
 
 
@@ -233,7 +227,8 @@ export const routes: Routes = [
 
       {
         path: 'admin/academic',
-        component: AcademicWorkspaceComponent,
+        loadComponent: () => import('./features/admin/academic/academic-workspace/academic-workspace')
+          .then(m => m.AcademicWorkspaceComponent),
         canActivate: [roleGuard],
         data: { roles: ['ADMIN'] }
       },
@@ -281,21 +276,24 @@ export const routes: Routes = [
 
       {
         path: 'admin/students/create',
-        component: StudentForm,
+        loadComponent: () => import('./features/admin/students/student-form/student-form')
+          .then(m => m.StudentForm),
         canActivate: [roleGuard],
         data: { roles: ['ADMIN'] }
       },
 
       {
         path: 'admin/students/:id',
-        component: StudentWorkspace,
+        loadComponent: () => import('./features/admin/students/student-workspace/student-workspace')
+          .then(m => m.StudentWorkspace),
         canActivate: [roleGuard],
         data: { roles: ['ADMIN'] }
       },
 
       {
         path: 'admin/students/:id/edit',
-        component: StudentForm,
+        loadComponent: () => import('./features/admin/students/student-form/student-form')
+          .then(m => m.StudentForm),
         canActivate: [roleGuard],
         data: { roles: ['ADMIN'] }
       },
@@ -536,7 +534,8 @@ export const routes: Routes = [
 
       {
         path: 'admin/insider/students',
-        component: StudentsInsider,
+        loadComponent: () => import('./features/admin/insider/students-insider/students-insider')
+          .then(m => m.StudentsInsider),
         canActivate: [roleGuard],
         data: { roles: ['ADMIN'] }
       },

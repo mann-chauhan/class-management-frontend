@@ -20,7 +20,6 @@ import {
   TeacherStudentScopeOption
 } from '../../models/teacher-student.model';
 
-import { PageHeaderComponent } from '../../../../../shared/components/page-header/page-header.component';
 import { SearchInputComponent } from '../../../../../shared/components/search-input/search-input.component';
 import { PaginationComponent } from '../../../../../shared/components/pagination/pagination.component';
 import { StatusBadgeComponent } from '../../../../../shared/components/status-badge/status-badge.component';
@@ -33,7 +32,6 @@ import { EmptyStateComponent } from '../../../../../shared/components/empty-stat
   imports: [
     CommonModule,
     FormsModule,
-    PageHeaderComponent,
     SearchInputComponent,
     PaginationComponent,
     StatusBadgeComponent,

@@ -5,6 +5,7 @@ import { ApiService } from '../../../../../core/services/api.service';
 
 import {
   School,
+  SchoolOption,
   CreateSchoolRequest,
   UpdateSchoolRequest
 } from '../school.model';
@@ -48,6 +49,26 @@ export class SchoolService {
 
     return this.api.get<ApiResponse<School>>(
       `${this.endpoint}/${id}`
+    );
+  }
+
+  getActiveSchools(
+    page = 0,
+    size = 20,
+    search = ''
+  ): Observable<ApiResponse<PageResponse<SchoolOption>>> {
+
+    const query = new URLSearchParams({
+      page: String(page),
+      size: String(size)
+    });
+
+    if (search.trim()) {
+      query.set('search', search.trim());
+    }
+
+    return this.api.get<ApiResponse<PageResponse<SchoolOption>>>(
+      `${this.endpoint}/active?${query.toString()}`
     );
   }
 

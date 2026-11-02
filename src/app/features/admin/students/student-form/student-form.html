@@ -566,6 +566,190 @@
 
         </div>
 
+        <!-- ================= INITIAL SCHOOL PERFORMANCE ================= -->
+
+        @if (!isEditMode) {
+
+          <div class="section initial-performance-section">
+
+            <div class="section-header initial-performance-header">
+
+              <div>
+                <h2>
+                  Initial School Performance
+                </h2>
+
+                <p>
+                  Optionally add the student's previous external-school exam history.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                class="add-performance-btn"
+                [disabled]="!canAddInitialPerformanceRecord()"
+                (click)="addInitialPerformanceRecord()">
+                + Add Exam
+              </button>
+
+            </div>
+
+            @if (initialPerformanceNotice) {
+              <p class="field-hint performance-school-notice" role="status">{{ initialPerformanceNotice }}</p>
+            }
+
+            @if (initialPerformanceRecords.length === 0) {
+
+              <div class="performance-empty-state">
+                No initial exam records added. You can add them later from the student's workspace.
+              </div>
+
+            } @else {
+
+              <div
+                class="performance-records"
+                formArrayName="schoolPerformanceRecords">
+
+                @for (
+                  record of initialPerformanceRecords.controls;
+                  track $index;
+                  let index = $index
+                ) {
+
+                  <div
+                    class="performance-record"
+                    [formGroupName]="index">
+
+                    <div class="performance-record-heading">
+                      <strong>Exam {{ index + 1 }}</strong>
+
+                      <button
+                        type="button"
+                        class="remove-performance-btn"
+                        [attr.aria-label]="'Remove exam ' + (index + 1)"
+                        (click)="removeInitialPerformanceRecord(index)">
+                        Remove
+                      </button>
+                    </div>
+
+                    <div class="form-grid performance-record-grid">
+
+                      <div class="form-group inherited-school-field">
+                        <span class="form-label">School — inherited from student</span>
+                        <output class="inherited-school-value" [attr.aria-label]="'School — inherited from student: ' + selectedSchoolName()">
+                          {{ selectedSchoolName() }}
+                        </output>
+                      </div>
+
+                      <div class="form-group">
+                        <label [for]="'performance-exam-name-' + index">
+                          Exam Name <span>*</span>
+                        </label>
+
+                        <input
+                          [id]="'performance-exam-name-' + index"
+                          type="text"
+                          formControlName="examName"
+                          maxlength="160"
+                          placeholder="e.g. Final Examination"
+                          [class.invalid]="isInitialPerformanceFieldInvalid(index, 'examName')" />
+
+                        @if (isInitialPerformanceFieldInvalid(index, 'examName')) {
+                          <small class="field-error">
+                            @if (record.get('examName')?.hasError('required')) {
+                              Exam name is required.
+                            } @else {
+                              Exam name must be 160 characters or fewer.
+                            }
+                          </small>
+                        }
+                      </div>
+
+                      <div class="form-group">
+                        <label [for]="'performance-exam-date-' + index">
+                          Exam Date <small>(Optional)</small>
+                        </label>
+
+                        <input
+                          [id]="'performance-exam-date-' + index"
+                          type="date"
+                          formControlName="examDate" />
+                      </div>
+
+                      <div class="form-group">
+                        <label [for]="'performance-max-marks-' + index">
+                          Maximum Marks <span>*</span>
+                        </label>
+
+                        <input
+                          [id]="'performance-max-marks-' + index"
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          inputmode="decimal"
+                          formControlName="maximumMarks"
+                          [class.invalid]="isInitialPerformanceFieldInvalid(index, 'maximumMarks')" />
+
+                        @if (isInitialPerformanceFieldInvalid(index, 'maximumMarks')) {
+                          <small class="field-error">
+                            @if (record.get('maximumMarks')?.hasError('required')) {
+                              Maximum marks are required.
+                            } @else if (record.get('maximumMarks')?.hasError('min')) {
+                              Maximum marks must be greater than zero.
+                            } @else {
+                              Use up to 6 integer digits and 2 decimal places.
+                            }
+                          </small>
+                        }
+                      </div>
+
+                      <div class="form-group">
+                        <label [for]="'performance-obtained-marks-' + index">
+                          Obtained Marks <span>*</span>
+                        </label>
+
+                        <input
+                          [id]="'performance-obtained-marks-' + index"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          inputmode="decimal"
+                          formControlName="obtainedMarks"
+                          [class.invalid]="isObtainedMarksInvalid(index)" />
+
+                        @if (isObtainedMarksInvalid(index)) {
+                          <small class="field-error">
+                            @if (record.get('obtainedMarks')?.hasError('required')) {
+                              Obtained marks are required.
+                            } @else if (record.hasError('obtainedExceedsMaximum')) {
+                              Obtained marks cannot exceed maximum marks.
+                            } @else if (record.get('obtainedMarks')?.hasError('min')) {
+                              Obtained marks cannot be negative.
+                            } @else {
+                              Use up to 6 integer digits and 2 decimal places.
+                            }
+                          </small>
+                        }
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                }
+
+              </div>
+
+            }
+
+            <small class="field-hint performance-limit-hint">
+              You can add up to 50 initial exam records.
+            </small>
+
+          </div>
+
+        }
+
                 <!-- ================= FEE & CONCESSION ================= -->
 
         @if (!isEditMode) {

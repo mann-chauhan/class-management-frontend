@@ -22,6 +22,15 @@ import { AddPayment } from '../../fees/add-payment/add-payment';
 import { FeeReceipt } from '../../fees/models/fee-receipt.model';
 import { ReceiptService } from '../../fees/services/receipt.service';
 import { ReceiptViewComponent } from '../../fees/receipt-view/receipt-view';
+import { SchoolService } from '../../academic/schools/services/school.service';
+import { SchoolOption } from '../../academic/schools/school.model';
+import {
+    CreateStudentSchoolPerformanceRequest,
+    StudentSchoolPerformance,
+    StudentSchoolPerformanceSummary,
+    UpdateStudentSchoolPerformanceRequest
+} from '../models/student-school-performance.model';
+import { StudentSchoolPerformanceService } from '../services/student-school-performance.service';
 
 type WorkspaceTab =
     | 'overview'
@@ -29,7 +38,8 @@ type WorkspaceTab =
     | 'academic'
     | 'attendance'
     | 'fees'
-    | 'marks';
+    | 'marks'
+    | 'school-performance';
 
 @Component({
     selector: 'app-student-workspace',
@@ -48,6 +58,8 @@ export class StudentWorkspace implements OnInit {
     private readonly studentFeeService = inject(StudentFeeService);
     private readonly receiptService = inject(ReceiptService);
     private readonly receiptSettingsService = inject(ReceiptSettingsService);
+    private readonly schoolService = inject(SchoolService);
+    private readonly schoolPerformanceService = inject(StudentSchoolPerformanceService);
 
     studentFee: StudentFee | null = null;
     feePayments: FeePayment[] = [];
@@ -72,12 +84,43 @@ export class StudentWorkspace implements OnInit {
     marksTotalElements = 0;
     marksLoaded = false;
 
+    schoolPerformanceRecords: StudentSchoolPerformance[] = [];
+    schoolPerformanceSummary: StudentSchoolPerformanceSummary | null = null;
+    schoolPerformanceLoading = false;
+    schoolPerformanceError = '';
+    schoolPerformanceLoaded = false;
+    schoolPerformancePage = 0;
+    schoolPerformanceTotalPages = 0;
+    schoolPerformanceTotalElements = 0;
+    schoolPerformanceSchools: SchoolOption[] = [];
+    schoolPerformanceSchoolsLoading = false;
+    private schoolPerformanceRequestsInFlight = 0;
+    private schoolPerformanceRecordsRequestSucceeded = false;
+    private schoolPerformanceSummaryRequestSucceeded = false;
+    private schoolPerformancePageCorrection: number | null = null;
+
+    schoolPerformanceModalOpen = false;
+    schoolPerformanceEditingRecord: StudentSchoolPerformance | null = null;
+    schoolPerformanceSaving = false;
+    schoolPerformanceDeletingId: number | null = null;
+    schoolPerformanceFormError = '';
+    schoolPerformanceConflict = false;
+    schoolPerformanceForm: {
+        schoolId: number | null;
+        examName: string;
+        examDate: string | null;
+        maximumMarks: number | null;
+        obtainedMarks: number | null;
+        version: number | null;
+    } = this.emptySchoolPerformanceForm();
+
     loading = true;
     errorMessage = '';
 
     activeTab: WorkspaceTab = 'overview';
 
     studentId: number | null = null;
+    private studentContextVersion = 0;
     editPopupOpen = false;
     addPaymentPopupOpen = false;
     downloadPopupOpen = false;
@@ -116,7 +159,16 @@ receiptErrorMessage = '';
     rememberDownloadSelection = true;
 
     ngOnInit(): void {
-        const id = Number(this.route.snapshot.paramMap.get('id'));
+        this.loadDownloadSelection();
+        this.loadReceiptSettings();
+        this.route.paramMap.subscribe(params => {
+            this.initializeStudent(Number(params.get('id')));
+        });
+    }
+
+    private initializeStudent(id: number): void {
+        this.studentContextVersion += 1;
+        this.resetStudentWorkspaceState();
 
         if (!Number.isFinite(id) || id <= 0) {
             this.loading = false;
@@ -125,9 +177,50 @@ receiptErrorMessage = '';
         }
 
         this.studentId = id;
-        this.loadDownloadSelection();
-        this.loadReceiptSettings();
-        this.loadStudent(id);
+        this.loadStudent(id, this.studentContextVersion);
+    }
+
+    private resetStudentWorkspaceState(): void {
+        this.studentId = null;
+        this.student = null;
+        this.attendance = [];
+        this.attendanceLoading = false;
+        this.attendanceError = '';
+        this.marks = [];
+        this.marksLoading = false;
+        this.marksError = '';
+        this.marksPage = 0;
+        this.marksTotalPages = 0;
+        this.marksTotalElements = 0;
+        this.marksLoaded = false;
+        this.studentFee = null;
+        this.feePayments = [];
+        this.feesLoading = false;
+        this.feesError = '';
+        this.schoolPerformanceRecords = [];
+        this.schoolPerformanceSummary = null;
+        this.schoolPerformanceLoading = false;
+        this.schoolPerformanceError = '';
+        this.schoolPerformanceLoaded = false;
+        this.schoolPerformancePage = 0;
+        this.schoolPerformanceTotalPages = 0;
+        this.schoolPerformanceTotalElements = 0;
+        this.schoolPerformanceSchools = [];
+        this.schoolPerformanceSchoolsLoading = false;
+        this.schoolPerformanceRequestsInFlight = 0;
+        this.schoolPerformanceRecordsRequestSucceeded = false;
+        this.schoolPerformanceSummaryRequestSucceeded = false;
+        this.schoolPerformancePageCorrection = null;
+        this.schoolPerformanceModalOpen = false;
+        this.schoolPerformanceEditingRecord = null;
+        this.schoolPerformanceSaving = false;
+        this.schoolPerformanceDeletingId = null;
+        this.schoolPerformanceFormError = '';
+        this.schoolPerformanceConflict = false;
+        this.schoolPerformanceForm = this.emptySchoolPerformanceForm();
+        this.activeTab = 'overview';
+        this.loading = true;
+        this.errorMessage = '';
     }
 
     private loadReceiptSettings(): void {
@@ -149,21 +242,27 @@ receiptErrorMessage = '';
         });
     }
 
-    private loadStudent(id: number): void {
+    private loadStudent(id: number, contextVersion = this.studentContextVersion): void {
         this.loading = true;
         this.errorMessage = '';
 
         this.studentService.getStudentById(id).subscribe({
             next: response => {
+                if (contextVersion !== this.studentContextVersion) {
+                    return;
+                }
                 this.student = response.data;
                 this.loading = false;
                 this.loadFees();
 
-                this.loadAttendance(id);
+                this.loadAttendance(id, contextVersion);
 
                 this.cdr.detectChanges();
             },
             error: error => {
+                if (contextVersion !== this.studentContextVersion) {
+                    return;
+                }
                 console.error('Failed to load student workspace:');
 
                 this.student = null;
@@ -177,7 +276,7 @@ receiptErrorMessage = '';
         });
     }
 
-    private loadAttendance(studentId: number): void {
+    private loadAttendance(studentId: number, contextVersion = this.studentContextVersion): void {
         this.attendanceLoading = true;
         this.attendanceError = '';
 
@@ -185,11 +284,17 @@ receiptErrorMessage = '';
             .getAttendanceByStudent(studentId)
             .subscribe({
                 next: response => {
+                    if (contextVersion !== this.studentContextVersion) {
+                        return;
+                    }
                     this.attendance = response.data ?? [];
                     this.attendanceLoading = false;
                     this.cdr.detectChanges();
                 },
                 error: error => {
+                    if (contextVersion !== this.studentContextVersion) {
+                        return;
+                    }
                     console.error(
                         'Failed to load student attendance:'
                     );
@@ -244,14 +349,26 @@ receiptErrorMessage = '';
         if (tab === 'marks' && !this.marksLoaded && !this.marksLoading) {
             this.loadMarks();
         }
+        if (
+            tab === 'school-performance' &&
+            !this.schoolPerformanceLoaded &&
+            !this.schoolPerformanceLoading
+        ) {
+            this.loadSchoolPerformance();
+        }
     }
 
     loadMarks(page = 0): void {
         if (!this.studentId) return;
+        const contextVersion = this.studentContextVersion;
+        const studentId = this.studentId;
         this.marksLoading = true;
         this.marksError = '';
-        this.studentService.getStudentMarks(this.studentId, page).subscribe({
+        this.studentService.getStudentMarks(studentId, page).subscribe({
             next: response => {
+                if (contextVersion !== this.studentContextVersion) {
+                    return;
+                }
                 this.marks = response.data?.content ?? [];
                 this.marksPage = response.data?.number ?? page;
                 this.marksTotalPages = response.data?.totalPages ?? 0;
@@ -261,6 +378,9 @@ receiptErrorMessage = '';
                 this.cdr.detectChanges();
             },
             error: error => {
+                if (contextVersion !== this.studentContextVersion) {
+                    return;
+                }
                 this.marks = [];
                 this.marksLoading = false;
                 this.marksError = error?.error?.message ||
@@ -275,6 +395,382 @@ receiptErrorMessage = '';
     marksPageChange(page: number): void {
         if (page < 0 || page >= this.marksTotalPages || page === this.marksPage) return;
         this.loadMarks(page);
+    }
+
+    loadSchoolPerformance(page = 0, correctOutOfRangePage = false): void {
+        if (!this.studentId || this.schoolPerformanceLoading) {
+            return;
+        }
+
+        const contextVersion = this.studentContextVersion;
+
+        this.schoolPerformanceLoading = true;
+        this.schoolPerformanceError = '';
+
+        const loadSummary = !this.schoolPerformanceSummary;
+        const recordsRequest = this.schoolPerformanceService.list(
+            this.studentId,
+            page,
+            20
+        );
+        const summaryRequest = loadSummary
+            ? this.schoolPerformanceService.summary(this.studentId)
+            : null;
+
+        this.schoolPerformanceRequestsInFlight = summaryRequest ? 2 : 1;
+        this.schoolPerformanceRecordsRequestSucceeded = false;
+        this.schoolPerformanceSummaryRequestSucceeded = !loadSummary;
+
+        recordsRequest.subscribe({
+            next: response => {
+                if (contextVersion !== this.studentContextVersion) {
+                    return;
+                }
+                const data = response.data;
+                this.schoolPerformanceRecords = data?.content ?? [];
+                this.schoolPerformancePage = data?.number ?? page;
+                this.schoolPerformanceTotalPages = data?.totalPages ?? 0;
+                this.schoolPerformanceTotalElements = data?.totalElements ?? 0;
+                if (
+                    correctOutOfRangePage &&
+                    page > 0 &&
+                    (data?.totalPages ?? 0) > 0 &&
+                    page >= (data?.totalPages ?? 0)
+                ) {
+                    this.schoolPerformancePageCorrection =
+                        (data?.totalPages ?? 1) - 1;
+                }
+                this.schoolPerformanceRecordsRequestSucceeded = true;
+                this.finishSchoolPerformanceLoad(contextVersion);
+            },
+            error: error => {
+                if (contextVersion !== this.studentContextVersion) {
+                    return;
+                }
+                this.schoolPerformanceRecords = [];
+                this.schoolPerformanceLoaded = false;
+                this.schoolPerformanceError = error?.error?.message ||
+                    'School performance information is unavailable.';
+                this.finishSchoolPerformanceLoad(contextVersion);
+            }
+        });
+
+        if (summaryRequest) {
+            summaryRequest.subscribe({
+                next: response => {
+                    if (contextVersion !== this.studentContextVersion) {
+                        return;
+                    }
+                    this.schoolPerformanceSummary = response.data ?? null;
+                    this.schoolPerformanceSummaryRequestSucceeded = true;
+                    this.finishSchoolPerformanceLoad(contextVersion);
+                },
+                error: error => {
+                    if (contextVersion !== this.studentContextVersion) {
+                        return;
+                    }
+                    this.schoolPerformanceSummary = null;
+                    this.schoolPerformanceLoaded = false;
+                    this.schoolPerformanceError = error?.error?.message ||
+                        'School performance summary is unavailable.';
+                    this.finishSchoolPerformanceLoad(contextVersion);
+                }
+            });
+        }
+    }
+
+    private finishSchoolPerformanceLoad(contextVersion: number): void {
+        if (contextVersion !== this.studentContextVersion) {
+            return;
+        }
+        this.schoolPerformanceRequestsInFlight -= 1;
+        if (this.schoolPerformanceRequestsInFlight > 0) {
+            return;
+        }
+
+        this.schoolPerformanceLoading = false;
+        this.schoolPerformanceLoaded =
+            this.schoolPerformanceRecordsRequestSucceeded &&
+            this.schoolPerformanceSummaryRequestSucceeded;
+        this.cdr.detectChanges();
+
+        const correctedPage = this.schoolPerformancePageCorrection;
+        this.schoolPerformancePageCorrection = null;
+        if (this.schoolPerformanceLoaded && correctedPage !== null) {
+            this.loadSchoolPerformance(correctedPage);
+        }
+    }
+
+    retrySchoolPerformance(): void {
+        this.schoolPerformanceLoaded = false;
+        this.loadSchoolPerformance(this.schoolPerformancePage);
+    }
+
+    schoolPerformancePageChange(page: number): void {
+        if (
+            page < 0 ||
+            page >= this.schoolPerformanceTotalPages ||
+            page === this.schoolPerformancePage ||
+            this.schoolPerformanceLoading
+        ) {
+            return;
+        }
+
+        this.loadSchoolPerformance(page);
+    }
+
+    openSchoolPerformanceTab(): void {
+        this.setActiveTab('school-performance');
+    }
+
+    openAddSchoolPerformance(): void {
+        this.schoolPerformanceEditingRecord = null;
+        this.schoolPerformanceForm = this.emptySchoolPerformanceForm();
+        this.schoolPerformanceForm.schoolId = this.student?.schoolId ?? null;
+        this.schoolPerformanceFormError = '';
+        this.schoolPerformanceConflict = false;
+        this.schoolPerformanceModalOpen = true;
+        this.loadSchoolPerformanceSchools();
+        this.cdr.detectChanges();
+    }
+
+    openEditSchoolPerformance(record: StudentSchoolPerformance): void {
+        this.schoolPerformanceEditingRecord = record;
+        this.schoolPerformanceForm = {
+            schoolId: record.schoolId,
+            examName: record.examName,
+            examDate: record.examDate,
+            maximumMarks: record.maximumMarks,
+            obtainedMarks: record.obtainedMarks,
+            version: record.version
+        };
+        this.schoolPerformanceFormError = '';
+        this.schoolPerformanceConflict = false;
+        this.schoolPerformanceModalOpen = true;
+        this.loadSchoolPerformanceSchools(record);
+        this.cdr.detectChanges();
+    }
+
+    closeSchoolPerformanceModal(): void {
+        if (this.schoolPerformanceSaving) {
+            return;
+        }
+
+        this.schoolPerformanceModalOpen = false;
+        this.schoolPerformanceEditingRecord = null;
+        this.schoolPerformanceFormError = '';
+        this.schoolPerformanceConflict = false;
+        this.cdr.detectChanges();
+    }
+
+    saveSchoolPerformance(): void {
+        this.schoolPerformanceFormError = '';
+        this.schoolPerformanceConflict = false;
+
+        const validationError = this.validateSchoolPerformanceForm();
+        if (validationError || !this.studentId) {
+            this.schoolPerformanceFormError = validationError || 'Student could not be identified.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        const request: CreateStudentSchoolPerformanceRequest = {
+            schoolId: Number(this.schoolPerformanceForm.schoolId),
+            examName: this.schoolPerformanceForm.examName.trim(),
+            examDate: this.schoolPerformanceForm.examDate || null,
+            maximumMarks: Number(this.schoolPerformanceForm.maximumMarks),
+            obtainedMarks: Number(this.schoolPerformanceForm.obtainedMarks)
+        };
+
+        this.schoolPerformanceSaving = true;
+        const request$ = this.schoolPerformanceEditingRecord
+            ? this.schoolPerformanceService.update(
+                this.studentId,
+                this.schoolPerformanceEditingRecord.id,
+                {
+                    ...request,
+                    version: Number(this.schoolPerformanceForm.version)
+                } satisfies UpdateStudentSchoolPerformanceRequest
+            )
+            : this.schoolPerformanceService.create(this.studentId, request);
+
+        request$.subscribe({
+            next: () => {
+                this.schoolPerformanceSaving = false;
+                this.closeSchoolPerformanceModal();
+                this.refreshSchoolPerformance();
+            },
+            error: error => {
+                this.schoolPerformanceSaving = false;
+                if (error?.status === 409) {
+                    this.schoolPerformanceConflict = true;
+                    this.schoolPerformanceFormError =
+                        'This record was changed by another request. Reload it before saving again.';
+                } else {
+                    this.schoolPerformanceFormError = error?.error?.message ||
+                        'Failed to save school performance record.';
+                }
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    deleteSchoolPerformance(record: StudentSchoolPerformance): void {
+        if (!this.studentId || this.schoolPerformanceDeletingId !== null) {
+            return;
+        }
+
+        if (!window.confirm(`Delete the exam record “${record.examName}”?`)) {
+            return;
+        }
+
+        this.schoolPerformanceDeletingId = record.id;
+        this.schoolPerformanceError = '';
+        this.schoolPerformanceService.delete(this.studentId, record.id).subscribe({
+            next: () => {
+                this.schoolPerformanceDeletingId = null;
+                this.refreshSchoolPerformance(true);
+            },
+            error: error => {
+                this.schoolPerformanceDeletingId = null;
+                this.schoolPerformanceError = error?.error?.message ||
+                    'Failed to delete school performance record.';
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    reloadSchoolPerformanceAfterConflict(): void {
+        this.closeSchoolPerformanceModal();
+        this.schoolPerformanceLoaded = false;
+        this.loadSchoolPerformance(this.schoolPerformancePage);
+    }
+
+    private refreshSchoolPerformance(afterDelete = false): void {
+        this.schoolPerformanceSummary = null;
+        this.schoolPerformanceLoaded = false;
+        this.schoolPerformancePageCorrection = null;
+        this.loadSchoolPerformance(this.schoolPerformancePage, afterDelete);
+    }
+
+    private loadSchoolPerformanceSchools(record?: StudentSchoolPerformance): void {
+        if (this.schoolPerformanceSchoolsLoading || this.schoolPerformanceSchools.length > 0) {
+            this.addHistoricalSchoolOption(record);
+            return;
+        }
+
+        this.schoolPerformanceSchoolsLoading = true;
+        this.loadSchoolPerformanceSchoolPage(0, [], record);
+    }
+
+    private loadSchoolPerformanceSchoolPage(
+        page: number,
+        loaded: SchoolOption[],
+        record?: StudentSchoolPerformance
+    ): void {
+        this.schoolService.getActiveSchools(page, 20).subscribe({
+            next: response => {
+                const data = response.data;
+                const schools = [
+                    ...loaded,
+                    ...(data?.content ?? [])
+                ];
+
+                if (page + 1 < (data?.totalPages ?? 0)) {
+                    this.loadSchoolPerformanceSchoolPage(page + 1, schools, record);
+                    return;
+                }
+
+                this.schoolPerformanceSchools = schools;
+                this.addHistoricalSchoolOption(record);
+                this.schoolPerformanceSchoolsLoading = false;
+                this.cdr.detectChanges();
+            },
+            error: error => {
+                this.schoolPerformanceSchoolsLoading = false;
+                this.schoolPerformanceFormError = error?.error?.message ||
+                    'Failed to load active school options.';
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    private addHistoricalSchoolOption(record?: StudentSchoolPerformance): void {
+        if (!record || this.schoolPerformanceSchools.some(school => school.id === record.schoolId)) {
+            return;
+        }
+
+        this.schoolPerformanceSchools = [
+            ...this.schoolPerformanceSchools,
+            {
+                id: record.schoolId,
+                name: `${record.schoolName} (Historical)`,
+                code: ''
+            }
+        ];
+    }
+
+    private emptySchoolPerformanceForm(): {
+        schoolId: number | null;
+        examName: string;
+        examDate: string | null;
+        maximumMarks: number | null;
+        obtainedMarks: number | null;
+        version: number | null;
+    } {
+        return {
+            schoolId: null,
+            examName: '',
+            examDate: null,
+            maximumMarks: null,
+            obtainedMarks: null,
+            version: null
+        };
+    }
+
+    private validateSchoolPerformanceForm(): string {
+        const form = this.schoolPerformanceForm;
+        const maximumMarks = Number(form.maximumMarks);
+        const obtainedValue: unknown = form.obtainedMarks;
+        const marksPattern = /^\d{1,6}(\.\d{1,2})?$/;
+
+        if (!form.schoolId) return 'School is required.';
+        if (!form.examName.trim()) return 'Exam name is required.';
+        if (form.examName.trim().length > 160) return 'Exam name must be 160 characters or fewer.';
+        if (this.isSchoolPerformanceDateInvalid()) {
+            return 'Future exam dates are not allowed. Please select today or an earlier date.';
+        }
+        if (!Number.isFinite(maximumMarks) || maximumMarks <= 0) return 'Maximum marks must be greater than zero.';
+        if (!marksPattern.test(String(form.maximumMarks))) return 'Maximum marks support up to 6 integer digits and 2 decimals.';
+        if (
+            obtainedValue === null ||
+            obtainedValue === undefined ||
+            (typeof obtainedValue === 'string' && obtainedValue.trim() === '')
+        ) {
+            return 'Obtained marks are required.';
+        }
+        const obtainedMarks = Number(obtainedValue);
+        if (!Number.isFinite(obtainedMarks) || obtainedMarks < 0) return 'Obtained marks cannot be negative.';
+        if (!marksPattern.test(String(obtainedValue))) return 'Obtained marks support up to 6 integer digits and 2 decimals.';
+        if (obtainedMarks > maximumMarks) return 'Obtained marks cannot exceed maximum marks.';
+
+        return '';
+    }
+
+    get schoolPerformanceMaxExamDate(): string {
+        return this.localToday();
+    }
+
+    isSchoolPerformanceDateInvalid(): boolean {
+        const examDate = this.schoolPerformanceForm.examDate;
+        return !!examDate && examDate > this.schoolPerformanceMaxExamDate;
+    }
+
+    private localToday(): string {
+        const today = new Date();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${today.getFullYear()}-${month}-${day}`;
     }
 
     markStatusLabel(status: StudentMarkResult['markStatus']): string {

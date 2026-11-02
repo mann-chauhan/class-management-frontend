@@ -5,6 +5,32 @@
   min-height: 0;
 }
 
+.inherited-school-field {
+  align-self: start;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.inherited-school-value {
+  display: block;
+  min-height: 42px;
+  padding: 11px 12px;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  background: #f1f4f8;
+  color: #64748b;
+}
+
+.performance-school-notice {
+  color: #b45309;
+}
+
 /* =========================================================
    PAGE — ONLY THIS FORM PAGE SCROLLS
    ========================================================= */
@@ -301,6 +327,93 @@
 
   font-size: 12px;
   line-height: 1.4;
+}
+
+.initial-performance-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.add-performance-btn,
+.remove-performance-btn {
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.add-performance-btn {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.add-performance-btn:hover:not(:disabled) {
+  border-color: #93c5fd;
+  background: #dbeafe;
+}
+
+.add-performance-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.performance-empty-state {
+  padding: 18px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 14px;
+  text-align: center;
+}
+
+.performance-records {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.performance-record {
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.performance-record-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.remove-performance-btn {
+  padding: 7px 10px;
+  border: 1px solid #fecaca;
+  background: #fff;
+  color: #b91c1c;
+}
+
+.remove-performance-btn:hover {
+  background: #fef2f2;
+}
+
+.performance-record-grid {
+  gap: 16px;
+}
+
+.performance-limit-hint {
+  display: block;
+  margin-top: 12px;
 }
 
 .fee-calculation {
@@ -623,6 +736,14 @@
   .form-actions {
     padding: 16px 20px;
   }
+
+  .initial-performance-header {
+    flex-direction: column;
+  }
+
+  .add-performance-btn {
+    align-self: flex-start;
+  }
 }
 
 /* =========================================================
@@ -644,5 +765,13 @@
 
   .form-card {
     border-radius: 10px;
+  }
+
+  .performance-record {
+    padding: 14px;
+  }
+
+  .performance-record-heading {
+    align-items: flex-start;
   }
 }

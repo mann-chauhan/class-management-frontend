@@ -18,12 +18,7 @@ export const authGuard: CanActivateFn = () => {
     const tokenService = inject(TokenService);
     const router = inject(Router);
 
-    const token = tokenService.getToken();
-
-    console.log('AUTH GUARD');
-    console.log('Token exists:', !!token);
-
-    if (token) {
+    if (tokenService.hasToken()) {
         console.log('✅ AUTHENTICATED');
            return true;
     }

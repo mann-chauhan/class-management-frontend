@@ -60,6 +60,23 @@ export interface CreateStudentRequest {
 
   discountType: 'NONE' | 'PERCENTAGE' | 'FIXED_AMOUNT';
   discountValue: number;
+
+  schoolPerformanceRecords?: CreateInitialStudentSchoolPerformanceRequest[];
+}
+
+export interface CreateInitialStudentSchoolPerformanceRequest {
+  examName: string;
+  examDate: string | null;
+  maximumMarks: number;
+  obtainedMarks: number;
+}
+
+export interface CreateStudentSchoolPerformanceRequest {
+  schoolId: number;
+  examName: string;
+  examDate: string | null;
+  maximumMarks: number;
+  obtainedMarks: number;
 }
 
 export interface UpdateStudentRequest {
