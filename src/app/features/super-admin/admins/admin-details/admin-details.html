@@ -66,9 +66,109 @@
           Edit Admin
         </button>
 
+        @if (admin.isActive) {
+          <button
+            type="button"
+            class="btn btn-danger reset-password-button"
+            [disabled]="resettingPassword"
+            (click)="openResetPasswordConfirmation()">
+            {{ resettingPassword ? 'Resetting...' : 'Reset Password' }}
+          </button>
+        } @else {
+          <span class="reset-unavailable">
+            Password reset unavailable for inactive accounts.
+          </span>
+        }
+
       </div>
 
     </header>
+
+    @if (resetError) {
+      <div class="reset-error" role="alert">
+        {{ resetError }}
+      </div>
+    }
+
+    @if (passwordResetResult) {
+      <section
+        class="password-reset-result"
+        aria-labelledby="password-reset-result-title">
+
+        <div class="result-header">
+          <div>
+            <p class="eyebrow">PASSWORD RESET COMPLETE</p>
+            <h2 id="password-reset-result-title">Temporary password</h2>
+            <p>
+              Share this password securely with {{ passwordResetResult.username }}.
+              It will not be shown again after dismissal.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="result-dismiss"
+            aria-label="Dismiss temporary password"
+            title="Dismiss temporary password"
+            (click)="dismissPasswordResetResult()">
+            ×
+          </button>
+        </div>
+
+        <div class="temporary-password-row">
+          <code class="temporary-password-value">
+            {{ temporaryPasswordVisible ? temporaryPassword : '••••••••••••••••' }}
+          </code>
+
+          <button
+            type="button"
+            class="password-control"
+            [attr.aria-label]="temporaryPasswordVisible
+              ? 'Hide temporary password'
+              : 'Reveal temporary password'"
+            [attr.aria-pressed]="temporaryPasswordVisible"
+            title="Reveal or hide temporary password"
+            (click)="toggleTemporaryPasswordVisibility()">
+            {{ temporaryPasswordVisible ? 'Hide' : 'Reveal' }}
+          </button>
+
+          <button
+            type="button"
+            class="password-control copy-control"
+            aria-label="Copy temporary password"
+            title="Copy temporary password"
+            (click)="copyTemporaryPassword()">
+            Copy
+          </button>
+        </div>
+
+        @if (copyFeedback) {
+          <p class="copy-feedback" role="status">{{ copyFeedback }}</p>
+        }
+
+        @if (copyError) {
+          <p class="copy-error" role="alert">{{ copyError }}</p>
+        }
+
+        <button
+          type="button"
+          class="dismiss-result-button"
+          (click)="dismissPasswordResetResult()">
+          Dismiss password
+        </button>
+      </section>
+    }
+
+    <app-confirmation-dialog
+      [visible]="resetConfirmationVisible"
+      title="Reset Admin Password?"
+      message="A new temporary password will be generated for this administrator. Their existing password will stop working and all active sessions will be revoked. Continue?"
+      confirmLabel="Reset Password"
+      cancelLabel="Cancel"
+      [danger]="true"
+      (confirmed)="confirmResetPassword()"
+      (cancelled)="cancelResetPassword()">
+    </app-confirmation-dialog>
 
 
     <!-- Admin Information -->

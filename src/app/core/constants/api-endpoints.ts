@@ -10,7 +10,10 @@ export const API_ENDPOINTS = {
       `/admins/${id}/details`,
 
     STATUS: (id: number) =>
-      `/admins/${id}/status`
+      `/admins/${id}/status`,
+
+    RESET_PASSWORD: (id: number) =>
+      `/admins/${id}/reset-password`
   },
 
   TEACHERS: {

@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "e2e": "playwright test",
-    "e2e:advertisement": "playwright test --config=playwright.advertisement.config.ts"
+    "e2e:advertisement": "playwright test --config=playwright.advertisement.config.ts",
+    "e2e:admin-password-reset": "playwright test --config=playwright.admin-password-reset.config.ts"
   },
   "private": true,
   "packageManager": "npm@10.8.2",

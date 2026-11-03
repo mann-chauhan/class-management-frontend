@@ -8,6 +8,7 @@ import { Admin } from '../../../../core/models/admin.model';
 import { AdminDetails } from '../../../../core/models/admin-details.model';
 import { UpdateAdminRequest } from '../../../../core/models/update-admin.model';
 import { CreateAdminRequest } from '../../../../core/models/create-admin.model';
+import { AdminPasswordReset } from '../models/admin-password-reset.model';
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
@@ -70,6 +71,15 @@ updateAdminStatus(
   return this.api.patch<ApiResponse<Admin>>(
     API_ENDPOINTS.ADMINS.STATUS(id),
     { isActive }
+  );
+}
+
+resetAdminPassword(
+  adminId: number
+): Observable<ApiResponse<AdminPasswordReset>> {
+  return this.api.post<ApiResponse<AdminPasswordReset>>(
+    API_ENDPOINTS.ADMINS.RESET_PASSWORD(adminId),
+    {}
   );
 }
 }
