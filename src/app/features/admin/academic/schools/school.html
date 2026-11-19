@@ -61,12 +61,17 @@
 
   <!-- ERROR -->
 
-  @if (errorMessage) {
-
+  @if (loadError) {
     <div class="error-state">
-      <span>{{ errorMessage }}</span>
+      <app-inline-feedback
+        kind="error"
+        title="Schools could not be loaded"
+        [message]="loadError"
+      />
+      <button type="button" class="btn-secondary" (click)="loadSchools()">
+        Retry
+      </button>
     </div>
-
   }
 
 
@@ -128,6 +133,14 @@
         <form
           (ngSubmit)="saveSchool()"
           #schoolForm="ngForm">
+
+          @if (formError) {
+            <app-inline-feedback
+              kind="error"
+              title="School could not be saved"
+              [message]="formError"
+            />
+          }
 
 
           <!-- SCHOOL NAME -->
@@ -279,8 +292,17 @@
     confirmLabel="Delete"
     cancelLabel="Cancel"
     [danger]="true"
+    [busy]="deleting"
+    busyLabel="Deleting..."
     (confirmed)="confirmDeleteSchool()"
     (cancelled)="cancelDeleteSchool()">
+    @if (deleteError) {
+      <app-inline-feedback
+        kind="error"
+        title="School could not be deleted"
+        [message]="deleteError"
+      />
+    }
   </app-confirmation-dialog>
 
 </div>

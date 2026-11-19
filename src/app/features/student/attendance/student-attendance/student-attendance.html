@@ -50,7 +50,7 @@
 
   <div class="summary-feedback summary-feedback-error" role="alert">
     <span>{{ summaryError }}</span>
-    <button type="button" (click)="loadSummary()">Retry</button>
+    <button type="button" (click)="loadSummary()">Retry attendance summary</button>
   </div>
 
   } @else if (summary && summary.totalRecords > 0) {
@@ -139,7 +139,7 @@
           </p>
 
           <button type="button" class="retry-button" (click)="loadAttendance()">
-            Retry
+            Retry loading attendance
           </button>
         </div>
 

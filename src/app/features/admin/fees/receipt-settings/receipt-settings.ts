@@ -16,6 +16,8 @@ import {
 } from '../models/receipt-settings.model';
 
 import { Router } from '@angular/router';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-receipt-settings',
@@ -23,6 +25,7 @@ import { Router } from '@angular/router';
   imports: [
     CommonModule,
     FormsModule,
+    InlineFeedbackComponent,
 
   ],
   templateUrl: './receipt-settings.html',
@@ -34,6 +37,7 @@ export class ReceiptSettingsComponent implements OnInit {
   private readonly receiptSettingsService = inject(ReceiptSettingsService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly router = inject(Router);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   settings: ReceiptSettings | null = null;
 
@@ -46,7 +50,6 @@ export class ReceiptSettingsComponent implements OnInit {
   uploadingBadge = false;
 
   errorMessage = '';
-  successMessage = '';
 
   readonly maxFileSize = 5 * 1024 * 1024;
 
@@ -85,7 +88,6 @@ export class ReceiptSettingsComponent implements OnInit {
 
     this.saving = true;
     this.errorMessage = '';
-    this.successMessage = '';
 
     const request: UpdateReceiptSettingsRequest = {
       institutionName: this.settings.institutionName,
@@ -112,7 +114,10 @@ export class ReceiptSettingsComponent implements OnInit {
       next: (response) => {
         this.settings = response;
         this.saving = false;
-        this.successMessage = 'Receipt settings saved successfully.';
+        this.feedbackService.show({
+          kind: 'success',
+          message: 'Receipt settings saved successfully.'
+        });
         this.cdr.detectChanges();
       },
       error: (error) => {
@@ -176,14 +181,12 @@ private uploadFile(
 
   if (validationError) {
     this.errorMessage = validationError;
-    this.successMessage = '';
     input.value = '';
     this.cdr.detectChanges();
     return;
   }
 
   this.errorMessage = '';
-  this.successMessage = '';
 
   this.setUploading(type, true);
   this.cdr.detectChanges();
@@ -194,8 +197,10 @@ private uploadFile(
 
       this.setUploading(type, false);
 
-      this.successMessage =
-        `${this.getTypeLabel(type)} updated successfully.`;
+      this.feedbackService.show({
+        kind: 'success',
+        message: `${this.getTypeLabel(type)} updated successfully.`
+      });
 
       input.value = '';
 

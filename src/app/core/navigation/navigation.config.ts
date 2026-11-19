@@ -2,6 +2,7 @@ export interface NavigationItem {
     label: string;
     route: string;
     icon: string;
+    requiredPermission?: string;
 }
 
 export interface NavigationSection {
@@ -139,22 +140,26 @@ export const NAVIGATION_CONFIG: Record<string, NavigationSection[]> = {
                 {
                     label: 'Exams & Marks',
                     route: '/teacher/exams',
-                    icon: '▤'
+                    icon: '▤',
+                    requiredPermission: 'EXAM_VIEW'
                 },
                 {
                     label: 'My Assignments',
                     route: '/teacher/assignments',
-                    icon: '≡'
+                    icon: '≡',
+                    requiredPermission: 'ASSIGNMENT_VIEW'
                 },
                 {
                     label: 'Students',
                     route: '/teacher/students',
-                    icon: '♙'
+                    icon: '♙',
+                    requiredPermission: 'STUDENT_VIEW_NAME'
                 },
                 {
                     label: 'Attendance',
                     route: '/teacher/attendance',
-                    icon: '✓'
+                    icon: '✓',
+                    requiredPermission: 'ATTENDANCE_VIEW'
                 },
                 {
                     label: 'Leave Management',
@@ -164,7 +169,8 @@ export const NAVIGATION_CONFIG: Record<string, NavigationSection[]> = {
                 {
                     label: 'Student Leave Reviews',
                     route: '/teacher/leave/review',
-                    icon: '✓'
+                    icon: '✓',
+                    requiredPermission: 'LEAVE_STUDENT_VIEW'
                 }
             ]
         }

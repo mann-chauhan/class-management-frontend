@@ -22,32 +22,6 @@
 
 
   <!-- =====================================================
-       ERROR
-  ====================================================== -->
-
-  @if (errorMessage) {
-
-    <div class="error-state">
-      {{ errorMessage }}
-    </div>
-
-  }
-
-
-  <!-- =====================================================
-       SUCCESS
-  ====================================================== -->
-
-  @if (successMessage) {
-
-    <div class="success-state">
-      {{ successMessage }}
-    </div>
-
-  }
-
-
-  <!-- =====================================================
        LOADING
   ====================================================== -->
 
@@ -57,7 +31,31 @@
       Loading assignment...
     </div>
 
+  } @else if (loadingErrorMessage) {
+
+    <app-inline-feedback
+      class="error-state"
+      kind="error"
+      title="Unable to load assignment"
+      [message]="loadingErrorMessage"
+      announcementPriority="polite" />
+
+    <button
+      type="button"
+      class="cancel-btn"
+      (click)="retryLoading()">
+      Retry loading
+    </button>
+
   } @else {
+
+    <app-inline-feedback
+      class="error-state"
+      [hidden]="!saveErrorMessage"
+      kind="error"
+      title="Unable to update assignment"
+      [message]="errorMessage || 'Failed to update assignment.'"
+      announcementPriority="polite" />
 
     <!-- =====================================================
          FORM

@@ -4,11 +4,12 @@ import { CommonModule } from '@angular/common';
 import { StudentExamService } from '../services/student-exam.service';
 import { StudentExamMarkStatus, StudentExamResult } from '../models/student-exam.model';
 import { ExamHeroComponent } from '../../../exams/shared/exam-hero/exam-hero';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-student-exam-results',
   standalone: true,
-  imports: [CommonModule, ExamHeroComponent],
+  imports: [CommonModule, ExamHeroComponent, InlineFeedbackComponent],
   templateUrl: './student-exam-results.html',
   styleUrl: './student-exam-results.scss'
 })
@@ -55,6 +56,10 @@ export class StudentExamResultsComponent implements OnInit {
   }
 
   loadResults(): void {
+    if (this.loading) {
+      return;
+    }
+
     this.loading = true;
     this.errorMessage = '';
 
@@ -64,8 +69,7 @@ export class StudentExamResultsComponent implements OnInit {
         this.loading = false;
         this.cdr.detectChanges();
       },
-      error: error => {
-        console.error('Failed to load student exam results:', error);
+      error: () => {
         this.errorMessage = 'Could not load exam results. Please try again.';
         this.loading = false;
         this.cdr.detectChanges();

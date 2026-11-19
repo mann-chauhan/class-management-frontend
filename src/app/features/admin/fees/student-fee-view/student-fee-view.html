@@ -43,7 +43,7 @@
 
   @if (!loading && errorMessage) {
     <div class="state-card error">
-      {{ errorMessage }}
+      <app-inline-feedback kind="error" title="Student fee loading failed" [message]="errorMessage" announcementPriority="polite" />
     </div>
   }
 
@@ -379,9 +379,7 @@
 
         @if (paymentEditErrorMessage) {
 
-          <div class="payment-edit-error">
-            {{ paymentEditErrorMessage }}
-          </div>
+          <app-inline-feedback kind="error" title="Payment update failed" [message]="paymentEditErrorMessage" announcementPriority="polite" />
 
         }
 

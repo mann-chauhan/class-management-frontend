@@ -65,34 +65,15 @@
 
   @if (errorMessage && !loadingAssignment) {
 
-    <div class="error-banner">
-
-      <div class="alert-icon" aria-hidden="true">!</div>
-
-      <div>
-        <strong>Unable to continue</strong>
-        <span>{{ errorMessage }}</span>
-      </div>
-
-    </div>
+    <app-inline-feedback
+      kind="error"
+      title="Teacher role assignment failed"
+      [message]="errorMessage"
+      announcementPriority="polite" />
 
   }
 
 
-  @if (successMessage) {
-
-    <div class="success-banner">
-
-      <div class="alert-icon" aria-hidden="true">✓</div>
-
-      <div>
-        <strong>Assignment saved</strong>
-        <span>{{ successMessage }}</span>
-      </div>
-
-    </div>
-
-  }
 
 
   <!-- =========================================================

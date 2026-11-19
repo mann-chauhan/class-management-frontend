@@ -1,0 +1,68 @@
+<section class="feedback-host" aria-label="Action feedback">
+  <div class="feedback-stack">
+    @for (record of activeFeedback(); track record.feedback.id; let index = $index) {
+      <article
+        class="feedback-card"
+        [class]="'feedback-card feedback-card--' + record.feedback.kind"
+        [attr.role]="roleFor(record.feedback.announcementPriority)"
+        [attr.aria-live]="liveFor(record.feedback.announcementPriority)"
+        aria-atomic="true"
+        (pointerenter)="onPointerEnter(record.feedback.id)"
+        (pointerleave)="onPointerLeave(record.feedback.id)"
+        (focusin)="onFocusEnter(record.feedback.id)"
+        (focusout)="onFocusLeave(record.feedback.id, $event)"
+      >
+        <span class="feedback-icon" aria-hidden="true">
+          @switch (record.feedback.kind) {
+            @case ('success') { ✓ }
+            @case ('info') { i }
+            @case ('warning') { ! }
+            @case ('error') { × }
+          }
+        </span>
+
+        <div class="feedback-content">
+          @if (record.feedback.title) {
+            <h2 class="feedback-title">{{ safeText(record.feedback.title, 120) }}</h2>
+          }
+          <p class="feedback-message">{{ safeText(record.feedback.message, 300) }}</p>
+          @if (record.feedback.description) {
+            <p class="feedback-description">{{ safeText(record.feedback.description, 300) }}</p>
+          }
+          @if (record.feedback.partial; as partial) {
+            <p class="feedback-partial-summary">{{ partialSummary(partial) }}</p>
+            @if (partialStatusMessage(partial); as statusMessage) {
+              <p class="feedback-partial-status">{{ statusMessage }}</p>
+            }
+            @if (failedPreview(partial).length > 0) {
+              <ul class="feedback-failed-items">
+                @for (item of failedPreview(partial); track failedItemTrack(item, $index)) {
+                  <li>
+                    <span>{{ safeText(item.label, 120) }}</span>
+                    @if (item.reason) {
+                      <span class="feedback-failure-reason"> — {{ safeText(item.reason, 160) }}</span>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+            @if (hasMoreFailedItems(partial)) {
+              <p class="feedback-more-items">More failed items are available in the feature details.</p>
+            }
+          }
+        </div>
+
+        @if (record.feedback.dismissible) {
+          <button
+            type="button"
+            class="feedback-dismiss"
+            [attr.aria-label]="dismissLabel(record.feedback.title, record.feedback.kind)"
+            (click)="dismiss(record.feedback.id)"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        }
+      </article>
+    }
+  </div>
+</section>

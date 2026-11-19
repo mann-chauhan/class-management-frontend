@@ -1,6 +1,7 @@
 import {
     ChangeDetectorRef,
     Component,
+    OnDestroy,
     OnInit,
     inject
 } from '@angular/core';
@@ -27,10 +28,17 @@ import { SchoolOption } from '../../academic/schools/school.model';
 import {
     CreateStudentSchoolPerformanceRequest,
     StudentSchoolPerformance,
+    StudentSchoolPerformanceListOptions,
+    StudentSchoolPerformanceSortDirection,
+    StudentSchoolPerformanceSortField,
     StudentSchoolPerformanceSummary,
     UpdateStudentSchoolPerformanceRequest
 } from '../models/student-school-performance.model';
 import { StudentSchoolPerformanceService } from '../services/student-school-performance.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
+import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 
 type WorkspaceTab =
     | 'overview'
@@ -44,11 +52,11 @@ type WorkspaceTab =
 @Component({
     selector: 'app-student-workspace',
     standalone: true,
-    imports: [DecimalPipe, StudentForm, FormsModule, AddPayment, ReceiptViewComponent],
+    imports: [DecimalPipe, StudentForm, FormsModule, AddPayment, ReceiptViewComponent, InlineFeedbackComponent, ConfirmationDialogComponent, SearchInputComponent],
     templateUrl: './student-workspace.html',
     styleUrl: './student-workspace.scss'
 })
-export class StudentWorkspace implements OnInit {
+export class StudentWorkspace implements OnInit, OnDestroy {
 
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
@@ -60,6 +68,7 @@ export class StudentWorkspace implements OnInit {
     private readonly receiptSettingsService = inject(ReceiptSettingsService);
     private readonly schoolService = inject(SchoolService);
     private readonly schoolPerformanceService = inject(StudentSchoolPerformanceService);
+    private readonly feedbackService = inject(ActionFeedbackService);
 
     studentFee: StudentFee | null = null;
     feePayments: FeePayment[] = [];
@@ -94,15 +103,37 @@ export class StudentWorkspace implements OnInit {
     schoolPerformanceTotalElements = 0;
     schoolPerformanceSchools: SchoolOption[] = [];
     schoolPerformanceSchoolsLoading = false;
+    schoolPerformanceSearch = '';
+    schoolPerformanceSchoolId: number | null = null;
+    schoolPerformanceSortBy: StudentSchoolPerformanceSortField = 'examDate';
+    schoolPerformanceSortDirection: StudentSchoolPerformanceSortDirection = 'desc';
+    readonly schoolPerformanceSortOptions: ReadonlyArray<{
+        value: StudentSchoolPerformanceSortField;
+        label: string;
+    }> = [
+        { value: 'examDate', label: 'Exam date' },
+        { value: 'examName', label: 'Exam name' },
+        { value: 'maximumMarks', label: 'Maximum marks' },
+        { value: 'obtainedMarks', label: 'Obtained marks' },
+        { value: 'schoolName', label: 'School name' },
+        { value: 'createdAt', label: 'Created date' },
+        { value: 'updatedAt', label: 'Updated date' }
+    ];
     private schoolPerformanceRequestsInFlight = 0;
     private schoolPerformanceRecordsRequestSucceeded = false;
     private schoolPerformanceSummaryRequestSucceeded = false;
     private schoolPerformancePageCorrection: number | null = null;
+    private schoolPerformanceRequestVersion = 0;
+    private schoolPerformanceHistoricalSchoolIds = new Set<number>();
+    private schoolPerformanceSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
     schoolPerformanceModalOpen = false;
     schoolPerformanceEditingRecord: StudentSchoolPerformance | null = null;
     schoolPerformanceSaving = false;
     schoolPerformanceDeletingId: number | null = null;
+    schoolPerformanceDeleteDialogOpen = false;
+    schoolPerformanceDeleteRecord: StudentSchoolPerformance | null = null;
+    schoolPerformanceDeleteError = '';
     schoolPerformanceFormError = '';
     schoolPerformanceConflict = false;
     schoolPerformanceForm: {
@@ -129,7 +160,11 @@ export class StudentWorkspace implements OnInit {
 receiptPopupOpen = false;
 
 editingPayment: FeePayment | null = null;
-selectedReceipt: FeeReceipt | null = null;
+    selectedReceipt: FeeReceipt | null = null;
+
+    ngOnDestroy(): void {
+        this.clearSchoolPerformanceSearchTimer();
+    }
 
 paymentSaving = false;
 paymentEditErrorMessage = '';
@@ -181,6 +216,7 @@ receiptErrorMessage = '';
     }
 
     private resetStudentWorkspaceState(): void {
+        this.clearSchoolPerformanceSearchTimer();
         this.studentId = null;
         this.student = null;
         this.attendance = [];
@@ -207,10 +243,16 @@ receiptErrorMessage = '';
         this.schoolPerformanceTotalElements = 0;
         this.schoolPerformanceSchools = [];
         this.schoolPerformanceSchoolsLoading = false;
+        this.schoolPerformanceSearch = '';
+        this.schoolPerformanceSchoolId = null;
+        this.schoolPerformanceSortBy = 'examDate';
+        this.schoolPerformanceSortDirection = 'desc';
+        this.schoolPerformanceHistoricalSchoolIds.clear();
         this.schoolPerformanceRequestsInFlight = 0;
         this.schoolPerformanceRecordsRequestSucceeded = false;
         this.schoolPerformanceSummaryRequestSucceeded = false;
         this.schoolPerformancePageCorrection = null;
+        this.schoolPerformanceRequestVersion += 1;
         this.schoolPerformanceModalOpen = false;
         this.schoolPerformanceEditingRecord = null;
         this.schoolPerformanceSaving = false;
@@ -350,11 +392,12 @@ receiptErrorMessage = '';
             this.loadMarks();
         }
         if (
-            tab === 'school-performance' &&
-            !this.schoolPerformanceLoaded &&
-            !this.schoolPerformanceLoading
+            tab === 'school-performance'
         ) {
-            this.loadSchoolPerformance();
+            this.loadSchoolPerformanceSchools();
+            if (!this.schoolPerformanceLoaded && !this.schoolPerformanceLoading) {
+                this.loadSchoolPerformance();
+            }
         }
     }
 
@@ -398,23 +441,28 @@ receiptErrorMessage = '';
     }
 
     loadSchoolPerformance(page = 0, correctOutOfRangePage = false): void {
-        if (!this.studentId || this.schoolPerformanceLoading) {
+        if (!this.studentId) {
             return;
         }
 
         const contextVersion = this.studentContextVersion;
+        const requestVersion = ++this.schoolPerformanceRequestVersion;
+        const studentId = this.studentId;
 
         this.schoolPerformanceLoading = true;
         this.schoolPerformanceError = '';
 
         const loadSummary = !this.schoolPerformanceSummary;
-        const recordsRequest = this.schoolPerformanceService.list(
-            this.studentId,
-            page,
-            20
-        );
+        const listOptions = this.schoolPerformanceListOptions();
+        const hasListOptions = !!listOptions.search ||
+            listOptions.schoolId !== null && listOptions.schoolId !== undefined ||
+            listOptions.sortBy !== 'examDate' ||
+            listOptions.sortDirection !== 'desc';
+        const recordsRequest = hasListOptions
+            ? this.schoolPerformanceService.list(studentId, page, 20, listOptions)
+            : this.schoolPerformanceService.list(studentId, page, 20);
         const summaryRequest = loadSummary
-            ? this.schoolPerformanceService.summary(this.studentId)
+            ? this.schoolPerformanceService.summary(studentId)
             : null;
 
         this.schoolPerformanceRequestsInFlight = summaryRequest ? 2 : 1;
@@ -423,7 +471,10 @@ receiptErrorMessage = '';
 
         recordsRequest.subscribe({
             next: response => {
-                if (contextVersion !== this.studentContextVersion) {
+                if (
+                    contextVersion !== this.studentContextVersion ||
+                    requestVersion !== this.schoolPerformanceRequestVersion
+                ) {
                     return;
                 }
                 const data = response.data;
@@ -441,46 +492,61 @@ receiptErrorMessage = '';
                         (data?.totalPages ?? 1) - 1;
                 }
                 this.schoolPerformanceRecordsRequestSucceeded = true;
-                this.finishSchoolPerformanceLoad(contextVersion);
+                this.finishSchoolPerformanceLoad(contextVersion, requestVersion);
             },
             error: error => {
-                if (contextVersion !== this.studentContextVersion) {
+                if (
+                    contextVersion !== this.studentContextVersion ||
+                    requestVersion !== this.schoolPerformanceRequestVersion
+                ) {
                     return;
                 }
                 this.schoolPerformanceRecords = [];
                 this.schoolPerformanceLoaded = false;
                 this.schoolPerformanceError = error?.error?.message ||
                     'School performance information is unavailable.';
-                this.finishSchoolPerformanceLoad(contextVersion);
+                this.finishSchoolPerformanceLoad(contextVersion, requestVersion);
             }
         });
 
         if (summaryRequest) {
             summaryRequest.subscribe({
                 next: response => {
-                    if (contextVersion !== this.studentContextVersion) {
+                    if (
+                        contextVersion !== this.studentContextVersion ||
+                        requestVersion !== this.schoolPerformanceRequestVersion
+                    ) {
                         return;
                     }
                     this.schoolPerformanceSummary = response.data ?? null;
                     this.schoolPerformanceSummaryRequestSucceeded = true;
-                    this.finishSchoolPerformanceLoad(contextVersion);
+                    this.finishSchoolPerformanceLoad(contextVersion, requestVersion);
                 },
                 error: error => {
-                    if (contextVersion !== this.studentContextVersion) {
+                    if (
+                        contextVersion !== this.studentContextVersion ||
+                        requestVersion !== this.schoolPerformanceRequestVersion
+                    ) {
                         return;
                     }
                     this.schoolPerformanceSummary = null;
                     this.schoolPerformanceLoaded = false;
                     this.schoolPerformanceError = error?.error?.message ||
                         'School performance summary is unavailable.';
-                    this.finishSchoolPerformanceLoad(contextVersion);
+                    this.finishSchoolPerformanceLoad(contextVersion, requestVersion);
                 }
             });
         }
     }
 
-    private finishSchoolPerformanceLoad(contextVersion: number): void {
-        if (contextVersion !== this.studentContextVersion) {
+    private finishSchoolPerformanceLoad(
+        contextVersion: number,
+        requestVersion: number
+    ): void {
+        if (
+            contextVersion !== this.studentContextVersion ||
+            requestVersion !== this.schoolPerformanceRequestVersion
+        ) {
             return;
         }
         this.schoolPerformanceRequestsInFlight -= 1;
@@ -502,8 +568,99 @@ receiptErrorMessage = '';
     }
 
     retrySchoolPerformance(): void {
+        if (this.schoolPerformanceLoading) return;
         this.schoolPerformanceLoaded = false;
         this.loadSchoolPerformance(this.schoolPerformancePage);
+    }
+
+    onSchoolPerformanceSearch(search: string): void {
+        const normalizedSearch = search.trim();
+        this.schoolPerformanceSearch = normalizedSearch;
+        this.clearSchoolPerformanceSearchTimer();
+        if (!normalizedSearch) {
+            this.reloadSchoolPerformanceFromFilters();
+            return;
+        }
+
+        this.schoolPerformanceSearchTimer = setTimeout(() => {
+            this.schoolPerformanceSearchTimer = null;
+            this.reloadSchoolPerformanceFromFilters();
+        }, 300);
+    }
+
+    onSchoolPerformanceSchoolChange(schoolId: number | string | null): void {
+        const nextSchoolId = schoolId === '' || schoolId === null
+            ? null
+            : Number(schoolId);
+        const normalizedSchoolId = nextSchoolId !== null &&
+            Number.isInteger(nextSchoolId) && nextSchoolId > 0
+            ? nextSchoolId
+            : null;
+
+        if (normalizedSchoolId === this.schoolPerformanceSchoolId) return;
+
+        this.schoolPerformanceSchoolId = normalizedSchoolId;
+        this.clearSchoolPerformanceSearchTimer();
+        this.reloadSchoolPerformanceFromFilters();
+    }
+
+    onSchoolPerformanceSortChange(): void {
+        this.clearSchoolPerformanceSearchTimer();
+        this.reloadSchoolPerformanceFromFilters();
+    }
+
+    clearSchoolPerformanceFilters(): void {
+        if (!this.schoolPerformanceHasActiveFilters &&
+            this.schoolPerformanceSortBy === 'examDate' &&
+            this.schoolPerformanceSortDirection === 'desc') {
+            return;
+        }
+
+        this.schoolPerformanceSearch = '';
+        this.schoolPerformanceSchoolId = null;
+        this.schoolPerformanceSortBy = 'examDate';
+        this.schoolPerformanceSortDirection = 'desc';
+        this.clearSchoolPerformanceSearchTimer();
+        this.reloadSchoolPerformanceFromFilters();
+    }
+
+    get schoolPerformanceHasActiveFilters(): boolean {
+        return !!this.schoolPerformanceSearch ||
+            this.schoolPerformanceSchoolId !== null;
+    }
+
+    get schoolPerformanceFilterSchools(): SchoolOption[] {
+        return this.schoolPerformanceSchools.filter(school =>
+            !this.schoolPerformanceHistoricalSchoolIds.has(school.id)
+        );
+    }
+
+    private reloadSchoolPerformanceFromFilters(): void {
+        if (!this.studentId) return;
+
+        this.schoolPerformancePage = 0;
+        this.schoolPerformanceTotalPages = 0;
+        this.schoolPerformanceTotalElements = 0;
+        this.schoolPerformanceRecords = [];
+        this.schoolPerformanceLoaded = false;
+        this.schoolPerformancePageCorrection = null;
+        this.loadSchoolPerformance(0);
+    }
+
+    private schoolPerformanceListOptions(): StudentSchoolPerformanceListOptions {
+        return {
+            search: this.schoolPerformanceSearch,
+            schoolId: this.schoolPerformanceSchoolId,
+            sortBy: this.schoolPerformanceSortBy,
+            sortDirection: this.schoolPerformanceSortDirection
+        };
+    }
+
+    private clearSchoolPerformanceSearchTimer(): void {
+        if (this.schoolPerformanceSearchTimer !== null) {
+            clearTimeout(this.schoolPerformanceSearchTimer);
+            this.schoolPerformanceSearchTimer = null;
+        }
     }
 
     schoolPerformancePageChange(page: number): void {
@@ -599,6 +756,7 @@ receiptErrorMessage = '';
                 this.schoolPerformanceSaving = false;
                 this.closeSchoolPerformanceModal();
                 this.refreshSchoolPerformance();
+                this.feedbackService.show({ kind: 'success', message: 'School performance saved successfully.' });
             },
             error: error => {
                 this.schoolPerformanceSaving = false;
@@ -616,24 +774,39 @@ receiptErrorMessage = '';
     }
 
     deleteSchoolPerformance(record: StudentSchoolPerformance): void {
-        if (!this.studentId || this.schoolPerformanceDeletingId !== null) {
+        if (!this.studentId || this.schoolPerformanceDeletingId !== null || this.schoolPerformanceDeleteDialogOpen) {
             return;
         }
+        this.schoolPerformanceDeleteRecord = record;
+        this.schoolPerformanceDeleteError = '';
+        this.schoolPerformanceDeleteDialogOpen = true;
+        this.cdr.detectChanges();
+    }
 
-        if (!window.confirm(`Delete the exam record “${record.examName}”?`)) {
-            return;
-        }
+    cancelDeleteSchoolPerformance(): void {
+        if (this.schoolPerformanceDeletingId !== null) return;
+        this.schoolPerformanceDeleteDialogOpen = false;
+        this.schoolPerformanceDeleteRecord = null;
+        this.schoolPerformanceDeleteError = '';
+        this.cdr.detectChanges();
+    }
 
+    confirmDeleteSchoolPerformance(): void {
+        if (!this.studentId || !this.schoolPerformanceDeleteRecord || this.schoolPerformanceDeletingId !== null) return;
+        const record = this.schoolPerformanceDeleteRecord;
         this.schoolPerformanceDeletingId = record.id;
-        this.schoolPerformanceError = '';
+        this.schoolPerformanceDeleteError = '';
         this.schoolPerformanceService.delete(this.studentId, record.id).subscribe({
             next: () => {
                 this.schoolPerformanceDeletingId = null;
+                this.schoolPerformanceDeleteDialogOpen = false;
+                this.schoolPerformanceDeleteRecord = null;
                 this.refreshSchoolPerformance(true);
+                this.feedbackService.show({ kind: 'success', message: 'School performance record deleted successfully.' });
             },
             error: error => {
                 this.schoolPerformanceDeletingId = null;
-                this.schoolPerformanceError = error?.error?.message ||
+                this.schoolPerformanceDeleteError = error?.error?.message ||
                     'Failed to delete school performance record.';
                 this.cdr.detectChanges();
             }
@@ -700,6 +873,7 @@ receiptErrorMessage = '';
             return;
         }
 
+        this.schoolPerformanceHistoricalSchoolIds.add(record.schoolId);
         this.schoolPerformanceSchools = [
             ...this.schoolPerformanceSchools,
             {
@@ -1688,7 +1862,7 @@ closePaymentEdit(): void {
 }
 
 savePaymentEdit(): void {
-  if (!this.editingPayment) return;
+  if (!this.editingPayment || this.paymentSaving) return;
 
   this.paymentEditErrorMessage = '';
 
@@ -1794,12 +1968,11 @@ savePaymentEdit(): void {
 
         // Refresh the workspace fee summary + payment history
         this.loadFees();
+        this.feedbackService.show({ kind: 'success', message: 'Payment updated successfully.' });
 
         this.cdr.detectChanges();
       },
       error: error => {
-        console.error('Update payment error:');
-
         this.paymentSaving = false;
 
         this.paymentEditErrorMessage =
@@ -1848,6 +2021,7 @@ savePaymentEdit(): void {
         link.remove();
 
         window.URL.revokeObjectURL(url);
+        this.feedbackService.show({ kind: 'success', message: 'Receipt downloaded successfully.' });
       },
       error: (error) => {
         console.error('Receipt PDF download error:');

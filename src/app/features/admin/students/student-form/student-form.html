@@ -61,38 +61,13 @@
 
 @if (errorMessages.length > 0) {
 
-  <div class="error-state">
-
-    <div class="error-title">
-      Please fix the following:
-    </div>
-
-    <ul>
-      @for (message of errorMessages; track $index) {
-
-        <li>
-          {{ message }}
-        </li>
-
-      }
-    </ul>
-
-  </div>
+  <app-inline-feedback
+    kind="error"
+    title="Unable to save student"
+    [message]="errorMessages.join(' | ')"
+    announcementPriority="polite" />
 
 }
-
-
-      <!-- ================= SUCCESS ================= -->
-
-      @if (successMessage) {
-
-        <div class="success-state">
-
-          {{ successMessage }}
-
-        </div>
-
-      }
 
 
       <!-- ================= FORM ================= -->
@@ -392,7 +367,6 @@
     }
   </select>
 </div>
-
 
             <!-- ================= ACADEMIC YEAR ================= -->
 
@@ -978,3 +952,13 @@
   </div>
 
 </div>
+
+<app-confirmation-dialog
+  [visible]="schoolChangeDialogOpen"
+  title="Change student school?"
+  message="Changing the student's school will also change the school associated with all pending initial exam records. Continue?"
+  confirmLabel="Continue"
+  cancelLabel="Keep current school"
+  [danger]="false"
+  (confirmed)="confirmSchoolChange()"
+  (cancelled)="cancelSchoolChange()" />

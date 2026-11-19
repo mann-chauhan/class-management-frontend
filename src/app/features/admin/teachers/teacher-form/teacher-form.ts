@@ -18,6 +18,8 @@ import {
 } from '@angular/router';
 
 import { TeacherService } from '../services/teacher.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 
 @Component({
@@ -27,7 +29,8 @@ import { TeacherService } from '../services/teacher.service';
 
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    InlineFeedbackComponent
   ],
 
   templateUrl: './teacher-form.html',
@@ -58,6 +61,9 @@ export class TeacherForm implements OnInit {
   private readonly cdr =
     inject(ChangeDetectorRef);
 
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
+
 
   // =========================================================
   // STATE
@@ -72,9 +78,6 @@ export class TeacherForm implements OnInit {
   saving = false;
 
   errorMessages: string[] = [];
-
-  successMessage = '';
-
 
   // =========================================================
   // FORM
@@ -148,9 +151,6 @@ export class TeacherForm implements OnInit {
 
     this.errorMessages = [];
 
-    this.successMessage = '';
-
-
     this.teacherService
       .getTeacherById(this.teacherId)
       .subscribe({
@@ -208,13 +208,6 @@ export class TeacherForm implements OnInit {
 
 
         error: (error) => {
-
-          console.error(
-            'Failed to load teacher:',
-            error
-          );
-
-
           this.handleError(
             error,
             'Failed to load teacher.'
@@ -232,12 +225,13 @@ export class TeacherForm implements OnInit {
 
   saveTeacher(): void {
 
+    if (this.saving) {
+      return;
+    }
+
     // Clear previous messages
 
     this.errorMessages = [];
-
-    this.successMessage = '';
-
 
     // =======================================================
     // CLEAN VALUES
@@ -411,10 +405,7 @@ export class TeacherForm implements OnInit {
 
             this.saving = false;
 
-            this.successMessage =
-              'Teacher updated successfully.';
-
-            this.cdr.detectChanges();
+            this.showSaveSuccess('Teacher updated successfully.');
 
 
             setTimeout(() => {
@@ -429,13 +420,6 @@ export class TeacherForm implements OnInit {
 
 
           error: (error) => {
-
-            console.error(
-              'Failed to update teacher:',
-              error
-            );
-
-
             this.handleError(
               error,
               'Failed to update teacher.'
@@ -477,15 +461,12 @@ export class TeacherForm implements OnInit {
 
           this.saving = false;
 
+          this.showSaveSuccess('Teacher created successfully.');
+
           if (this.popupMode) {
             this.saved.emit();
             return;
           }
-
-          this.successMessage =
-            'Teacher created successfully.';
-
-          this.cdr.detectChanges();
 
 
           setTimeout(() => {
@@ -500,13 +481,6 @@ export class TeacherForm implements OnInit {
 
 
         error: (error) => {
-
-          console.error(
-            'Failed to create teacher:',
-            error
-          );
-
-
           this.handleError(
             error,
             'Failed to create teacher.'
@@ -539,13 +513,6 @@ export class TeacherForm implements OnInit {
     error: any,
     defaultMessage: string
   ): void {
-
-    console.error(
-      'Backend error:',
-      error
-    );
-
-
     this.errorMessages = [];
 
 
@@ -588,7 +555,8 @@ export class TeacherForm implements OnInit {
           // -----------------------------------------------
 
           if (
-            item?.message
+            typeof item?.message === 'string' &&
+            item.message.trim()
           ) {
 
             this.errorMessages.push(
@@ -604,8 +572,9 @@ export class TeacherForm implements OnInit {
           // -----------------------------------------------
 
           if (
-            item?.field &&
-            item?.defaultMessage
+            typeof item?.field === 'string' &&
+            typeof item?.defaultMessage === 'string' &&
+            item.defaultMessage.trim()
           ) {
 
             this.errorMessages.push(
@@ -621,8 +590,9 @@ export class TeacherForm implements OnInit {
           // -----------------------------------------------
 
           if (
-            item?.field &&
-            item?.message
+            typeof item?.field === 'string' &&
+            typeof item?.message === 'string' &&
+            item.message.trim()
           ) {
 
             this.errorMessages.push(
@@ -632,18 +602,6 @@ export class TeacherForm implements OnInit {
             return;
           }
 
-
-          // -----------------------------------------------
-          // Fallback
-          // -----------------------------------------------
-
-          if (item) {
-
-            this.errorMessages.push(
-              JSON.stringify(item)
-            );
-
-          }
 
         }
       );
@@ -660,9 +618,9 @@ export class TeacherForm implements OnInit {
     ) {
 
       const message =
-        backendError?.message ||
-        error?.message ||
-        defaultMessage;
+        typeof backendError?.message === 'string' && backendError.message.trim()
+          ? backendError.message
+          : defaultMessage;
 
 
       this.errorMessages.push(
@@ -676,6 +634,14 @@ export class TeacherForm implements OnInit {
     this.loading = false;
 
     this.cdr.detectChanges();
+  }
+
+  private showSaveSuccess(message: string): void {
+    this.feedbackService.show({
+      kind: 'success',
+      message,
+      persistAcrossNavigation: !this.popupMode
+    });
   }
 
 

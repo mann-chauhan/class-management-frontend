@@ -19,47 +19,53 @@
   </div>
 
 
-  @if (errorMessage) {
-    <div class="error-box">
-
-      <span>{{ errorMessage }}</span>
-
+  @if (permissionError) {
+    <div class="feedback-with-action">
+      <app-inline-feedback kind="error" title="Unable to verify permissions" [message]="permissionError"
+        announcementPriority="polite"></app-inline-feedback>
+      <button type="button" (click)="retryPermissions()">Retry permissions</button>
     </div>
   }
 
+  @if (studentLoadError) {
+    <div class="feedback-with-action">
+      <app-inline-feedback kind="error" title="Unable to load student" [message]="studentLoadError"
+        announcementPriority="polite"></app-inline-feedback>
+      <button type="button" (click)="retryStudentLoad()">Retry student</button>
+    </div>
+  }
+
+  @if (errorMessage && !permissionError && !studentLoadError && errorMessages.length === 0) {
+    <app-inline-feedback kind="error" title="Student form unavailable" [message]="errorMessage"
+      announcementPriority="polite"></app-inline-feedback>
+  }
 
   @if (errorMessages.length > 0) {
-    <div class="error-list">
-
-      @for (
-        message of errorMessages;
-        track $index
-      ) {
-        <div>{{ message }}</div>
-      }
-
-    </div>
+    <app-inline-feedback
+      kind="error"
+      title="Unable to save student"
+      [message]="errorMessages.join(' | ')"
+      announcementPriority="polite"></app-inline-feedback>
   }
 
 
-  @if (successMessage) {
-    <div class="success-box">
-
-      {{ successMessage }}
-
+  @if (isLoadingPermissions) {
+    <div class="loading-box">
+      Loading permissions...
     </div>
-  }
-
-
-  @if (loading) {
+  } @else if (loading) {
 
     <div class="loading-box">
       Loading student...
     </div>
 
   } @else if (
-  (!isEditMode && canCreateStudent()) ||
-  (isEditMode && canUpdateStudent())
+  !permissionError &&
+  !studentLoadError &&
+  (
+    (!isEditMode && canCreateStudent()) ||
+    (isEditMode && canViewStudent())
+  )
 ) {
 
   <form
@@ -67,6 +73,12 @@
     (ngSubmit)="onSubmit()"
     novalidate
   >
+
+      @if (isEditMode && !canUpdateStudent()) {
+        <div class="loading-box">
+          You have read-only access to this student. No editable Student fields are assigned to your role.
+        </div>
+      }
 
       <div class="form-card">
 
@@ -98,6 +110,7 @@
               type="text"
               formControlName="name"
               placeholder="Enter student name"
+              [readonly]="isEditMode && !canEditName()"
             />
 
             @if (isFieldInvalid('name')) {
@@ -122,6 +135,7 @@
               type="email"
               formControlName="email"
               placeholder="Enter email"
+              [readonly]="isEditMode && !canEditEmail()"
             />
 
             @if (isFieldInvalid('email')) {
@@ -146,6 +160,7 @@
               type="text"
               formControlName="phone"
               placeholder="Enter phone number"
+              [readonly]="isEditMode && !canEditPhone()"
             />
 
           </div>
@@ -161,6 +176,7 @@
               type="text"
               formControlName="alternatePhone"
               placeholder="Enter alternative phone number"
+              [readonly]="isEditMode && !canEditPhone()"
             />
 
           </div>
@@ -222,6 +238,7 @@
                 type="text"
                 formControlName="rollNumber"
                 placeholder="Enter roll number"
+                [readonly]="isEditMode && !canEditRollNumber()"
               />
 
               @if (isFieldInvalid('rollNumber')) {
@@ -267,8 +284,10 @@
 
         } @else if (scopeOptionsError) {
 
-          <div class="error-box">
-            {{ scopeOptionsError }}
+          <div class="feedback-with-action">
+            <app-inline-feedback kind="error" title="Unable to load scope options" [message]="scopeOptionsError"
+              announcementPriority="polite"></app-inline-feedback>
+            <button type="button" (click)="retryScopeOptions()">Retry scope options</button>
           </div>
 
         } @else {

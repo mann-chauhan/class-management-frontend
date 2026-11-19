@@ -12,11 +12,12 @@ import { StudentFeeService } from '../../admin/fees/services/student-fee.service
 import { StudentFee } from '../../admin/fees/models/student-fee.model';
 import { FeePayment } from '../../admin/fees/models/fee-payment.model';
 import { environment } from '../../../../environments/environment';
+import { InlineFeedbackComponent } from '../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-student-fees',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, InlineFeedbackComponent],
   templateUrl: './fees.html',
   styleUrl: './fees.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -40,15 +41,23 @@ getReceiptImageUrl(path: string | null): string | null {
   selectedFee: StudentFee | null = null;
 
   payments: FeePayment[] = [];
+  selectedPayment: FeePayment | null = null;
   receipt: FeeReceipt | null = null;
 
   loading = false;
   paymentsLoading = false;
   receiptLoading = false;
+  downloadingReceiptId: number | null = null;
 
   showReceipt = false;
 
   errorMessage = '';
+  paymentsError = '';
+  receiptError = '';
+  receiptDownloadError = '';
+
+  private paymentsRequestId = 0;
+  private receiptRequestId = 0;
 
   ngOnInit(): void {
     this.loadFees();
@@ -75,21 +84,31 @@ getReceiptImageUrl(path: string | null): string | null {
   viewPayments(fee: StudentFee): void {
     this.selectedFee = fee;
     this.payments = [];
+    this.paymentsError = '';
     this.showReceipt = false;
     this.receipt = null;
+    this.receiptError = '';
     this.paymentsLoading = true;
+    const requestId = ++this.paymentsRequestId;
 
     this.studentFeeService.getMyPayments(fee.id).subscribe({
       next: (response) => {
+        if (requestId !== this.paymentsRequestId) return;
         this.payments = response;
         this.paymentsLoading = false;
         this.cdr.markForCheck();
       },
       error: () => {
+        if (requestId !== this.paymentsRequestId) return;
         this.paymentsLoading = false;
+        this.paymentsError = 'Unable to load payment history.';
         this.cdr.markForCheck();
       }
     });
+  }
+
+  retryPayments(): void {
+    if (this.selectedFee) this.viewPayments(this.selectedFee);
   }
 
   closePayments(): void {
@@ -97,15 +116,18 @@ getReceiptImageUrl(path: string | null): string | null {
     this.payments = [];
   }
 
-viewReceiptForPayment(payment: FeePayment): void {
-
-  
+  viewReceiptForPayment(payment: FeePayment): void {
+  this.selectedPayment = payment;
   this.receipt = null;
+  this.receiptError = '';
+  this.receiptDownloadError = '';
   this.showReceipt = true;
   this.receiptLoading = true;
+  const requestId = ++this.receiptRequestId;
 
   this.receiptService.getMyByStudentFee(payment.studentFeeId).subscribe({
     next: (receipts) => {
+      if (requestId !== this.receiptRequestId) return;
       this.receipt =
         receipts.find(receipt => receipt.paymentId === payment.id) ?? null;
 
@@ -113,15 +135,26 @@ viewReceiptForPayment(payment: FeePayment): void {
       this.cdr.markForCheck();
     },
     error: () => {
+      if (requestId !== this.receiptRequestId) return;
       this.receiptLoading = false;
+      this.receiptError = 'Unable to load the receipt.';
       this.cdr.markForCheck();
     }
   });
 }
 
+  retryReceipt(): void {
+    if (this.selectedPayment) this.viewReceiptForPayment(this.selectedPayment);
+  }
+
   closeReceipt(): void {
     this.showReceipt = false;
     this.receipt = null;
+    this.selectedPayment = null;
+  }
+
+  retryFeeList(): void {
+    this.loadFees();
   }
 
   downloadReceipt(): void {
@@ -129,19 +162,36 @@ viewReceiptForPayment(payment: FeePayment): void {
     return;
   }
 
-  this.receiptService.downloadMyPdf(this.receipt.id).subscribe({
+  if (this.downloadingReceiptId !== null) return;
+
+  const receiptId = this.receipt.id;
+  this.receiptDownloadError = '';
+  this.downloadingReceiptId = receiptId;
+
+  this.receiptService.downloadMyPdf(receiptId).subscribe({
     next: (blob) => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
 
       link.href = url;
-      link.download = `receipt-${this.receipt!.id}.pdf`;
+      link.download = `receipt-${receiptId}.pdf`;
       link.click();
 
       window.URL.revokeObjectURL(url);
+      this.downloadingReceiptId = null;
+      this.cdr.markForCheck();
+    },
+    error: () => {
+      this.downloadingReceiptId = null;
+      this.receiptDownloadError = 'Unable to download this receipt. Please try again.';
+      this.cdr.markForCheck();
     }
   });
 }
+
+  retryReceiptDownload(): void {
+    this.downloadReceipt();
+  }
 
   getStatusClass(status: string): string {
     return status.toLowerCase();

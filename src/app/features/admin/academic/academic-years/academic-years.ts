@@ -7,6 +7,8 @@ import { PageHeaderComponent } from '../../../../shared/components/page-header/p
 import { AcademicYearService } from './services/academic-year.service';
 import { AcademicYear, CreateAcademicYearRequest, UpdateAcademicYearRequest } from './academic-year.model';
 import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-academic-years',
@@ -15,9 +17,10 @@ import { ConfirmationDialogComponent } from '../../../../shared/components/confi
     CommonModule,
     FormsModule,
     DataTableComponent,
-    SearchInputComponent,
-    PageHeaderComponent,
-  ConfirmationDialogComponent
+  SearchInputComponent,
+  PageHeaderComponent,
+  ConfirmationDialogComponent,
+  InlineFeedbackComponent
   ],
   templateUrl: './academic-years.html',
   styleUrl: './academic-years.scss'
@@ -25,6 +28,7 @@ import { ConfirmationDialogComponent } from '../../../../shared/components/confi
 export class AcademicYearsComponent implements OnInit {
   private readonly academicYearService = inject(AcademicYearService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   /* TABLE CONFIG */
 columns: TableColumn[] = [
@@ -61,6 +65,8 @@ columns: TableColumn[] = [
   academicYears: AcademicYear[] = [];
   loading = false;
   saving = false;
+  currentUpdating = false;
+  deleting = false;
   errorMessage = '';
 
   // DELETE CONFIRMATION
@@ -172,6 +178,10 @@ academicYearToDelete: AcademicYear | null = null;
 
   /* SAVE */
   saveYear(): void {
+    if (this.saving) {
+      return;
+    }
+
     if (
       !this.form.name ||
       !this.form.startDate ||
@@ -181,6 +191,7 @@ academicYearToDelete: AcademicYear | null = null;
     }
 
     this.saving = true;
+    this.errorMessage = '';
 
     if (this.editingYear) {
       const request: UpdateAcademicYearRequest = {
@@ -193,13 +204,16 @@ academicYearToDelete: AcademicYear | null = null;
       this.academicYearService
         .update(this.editingYear.id, request)
         .subscribe({
-          next: () => {
+          next: (response) => {
             this.saving = false;
+            this.feedbackService.show({
+              kind: 'success',
+              message: response.message || 'Academic year updated successfully.'
+            });
             this.closeForm();
             this.loadAcademicYears();
           },
           error: (error) => {
-            console.error(error);
             this.errorMessage =
               error?.error?.message ||
               'Failed to update academic year.';
@@ -218,13 +232,16 @@ academicYearToDelete: AcademicYear | null = null;
     };
 
     this.academicYearService.create(request).subscribe({
-      next: () => {
+      next: (response) => {
         this.saving = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: response.message || 'Academic year created successfully.'
+        });
         this.closeForm();
         this.loadAcademicYears();
       },
       error: (error) => {
-        console.error(error);
         this.errorMessage =
           error?.error?.message ||
           'Failed to create academic year.';
@@ -236,20 +253,24 @@ academicYearToDelete: AcademicYear | null = null;
 
   /* SET CURRENT */
   setCurrent(year: AcademicYear): void {
-    console.log('Setting current year:', year);
-
-    if (year.isCurrent) {
+    if (year.isCurrent || this.currentUpdating) {
       return;
     }
 
+    this.currentUpdating = true;
+    this.errorMessage = '';
+
     this.academicYearService.setCurrent(year.id).subscribe({
       next: (response) => {
-        console.log('Set current success', response);
+        this.currentUpdating = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: response.message || 'Current academic year updated successfully.'
+        });
         this.loadAcademicYears();
       },
       error: (error) => {
-        console.error('Set current failed', error);
-
+        this.currentUpdating = false;
         this.errorMessage =
           error?.error?.message ||
           'Failed to set current academic year.';
@@ -272,23 +293,28 @@ cancelDeleteYear(): void {
   this.cdr.markForCheck();
 }
 
-confirmDeleteYear(): void {
-  const year = this.academicYearToDelete;
+  confirmDeleteYear(): void {
+    const year = this.academicYearToDelete;
 
-  if (!year) {
-    return;
-  }
+    if (!year || this.deleting) {
+      return;
+    }
 
-  this.showDeleteDialog = false;
+    this.deleting = true;
+    this.showDeleteDialog = false;
   this.academicYearToDelete = null;
 
   this.academicYearService.delete(year.id).subscribe({
-    next: () => {
+    next: (response) => {
+      this.deleting = false;
+      this.feedbackService.show({
+        kind: 'success',
+        message: response.message || 'Academic year deleted successfully.'
+      });
       this.loadAcademicYears();
     },
     error: (error) => {
-      console.error(error);
-
+      this.deleting = false;
       this.errorMessage =
         error?.error?.message ||
         'Failed to delete academic year.';

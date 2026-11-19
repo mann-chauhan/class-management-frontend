@@ -67,17 +67,12 @@
       </div>
 
 
-      @if (success) {
-        <div class="success-message">
-          {{ success }}
-        </div>
-      }
-
-
       @if (error) {
-        <div class="error-message">
-          {{ error }}
-        </div>
+        <app-inline-feedback
+          kind="error"
+          [message]="error"
+          announcementPriority="assertive">
+        </app-inline-feedback>
       }
 
 

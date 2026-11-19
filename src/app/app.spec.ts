@@ -1,12 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { RouterOutlet } from '@angular/router';
+import { provideRouter, RouterOutlet } from '@angular/router';
 import { App } from './app';
+import { ActionFeedbackHostComponent } from './shared/components/action-feedback/action-feedback-host.component';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
+      providers: [provideRouter([])],
     }).compileComponents();
   });
 
@@ -21,5 +23,12 @@ describe('App', () => {
     fixture.detectChanges();
 
     expect(fixture.debugElement.query(By.directive(RouterOutlet))).toBeTruthy();
+  });
+
+  it('should render the root action feedback host', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.query(By.directive(ActionFeedbackHostComponent))).toBeTruthy();
   });
 });

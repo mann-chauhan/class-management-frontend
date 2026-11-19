@@ -17,6 +17,8 @@ import { API_ENDPOINTS } from '../../../../core/constants/api-endpoints';
 
 import { StudentFee } from '../models/student-fee.model';
 import { StudentFeeService } from '../services/student-fee.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-add-payment',
@@ -24,7 +26,8 @@ import { StudentFeeService } from '../services/student-fee.service';
   imports: [
     CommonModule,
     FormsModule,
-    ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    InlineFeedbackComponent
   ],
   templateUrl: './add-payment.html',
   styleUrl: './add-payment.scss'
@@ -42,6 +45,7 @@ export class AddPayment implements OnInit {
   private readonly studentFeeService = inject(StudentFeeService);
   private readonly api = inject(ApiService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   studentFee: StudentFee | null = null;
 
@@ -750,7 +754,7 @@ export class AddPayment implements OnInit {
       request
     ).subscribe({
 
-      next: () => {
+      next: (response: any) => {
 
         this.saving = false;
 
@@ -758,6 +762,12 @@ export class AddPayment implements OnInit {
           this.saved.emit();
           return;
         }
+
+        this.feedbackService.show({
+          kind: 'success',
+          message: response?.message || 'Payment recorded successfully.',
+          persistAcrossNavigation: true
+        });
 
         this.router.navigate([
           '/admin/fees/student-fees',

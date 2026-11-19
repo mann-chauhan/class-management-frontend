@@ -5,6 +5,7 @@ import { PermissionService } from '../../../core/auth/permission.service';
 import { LeaveRequest } from '../models/leave.model';
 import { LeaveService } from '../services/leave.service';
 import { TeacherLeaveReviewComponent } from './teacher-leave-review.component';
+import { ActionFeedbackService } from '../../../core/services/action-feedback.service';
 
 describe('TeacherLeaveReviewComponent', () => {
   let component: TeacherLeaveReviewComponent;
@@ -16,6 +17,7 @@ describe('TeacherLeaveReviewComponent', () => {
     teacherReject: ReturnType<typeof vi.fn>;
   };
   let permissions: { loadMyPermissions: ReturnType<typeof vi.fn>; hasPermission: ReturnType<typeof vi.fn> };
+  let feedbackService: { show: ReturnType<typeof vi.fn> };
 
   const request: LeaveRequest = {
     id: 41,
@@ -52,12 +54,14 @@ describe('TeacherLeaveReviewComponent', () => {
       loadMyPermissions: vi.fn().mockReturnValue(of({ success: true, message: 'ok', data: ['LEAVE_STUDENT_VIEW', 'LEAVE_STUDENT_APPROVE'] })),
       hasPermission: vi.fn((code: string) => code !== 'LEAVE_STUDENT_REJECT')
     };
+    feedbackService = { show: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [TeacherLeaveReviewComponent],
       providers: [
         { provide: LeaveService, useValue: service },
-        { provide: PermissionService, useValue: permissions }
+        { provide: PermissionService, useValue: permissions },
+        { provide: ActionFeedbackService, useValue: feedbackService }
       ]
     }).compileComponents();
 
@@ -95,7 +99,11 @@ describe('TeacherLeaveReviewComponent', () => {
 
     expect(service.teacherApprove).toHaveBeenCalledWith(request.id, { comment: undefined });
     expect(component.selected?.status).toBe('APPROVED');
-    expect(component.success).toBe('Approved');
+    expect(feedbackService.show).toHaveBeenCalledTimes(1);
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: 'Approved'
+    });
     expect(component.processingId).toBeNull();
   });
 
@@ -111,7 +119,11 @@ describe('TeacherLeaveReviewComponent', () => {
     expect(service.teacherReject).toHaveBeenCalledWith(request.id, { comment: 'Not within assigned scope' });
     expect(component.decisionError).toBe('Decision failed');
     expect(component.selected?.status).toBe('PENDING');
+    expect(component.comment).toBe('Not within assigned scope');
     expect(component.processingId).toBeNull();
+    component.detailOpen = true;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-inline-feedback')).not.toBeNull();
   });
 
   it('prevents a duplicate decision while the first request is pending', () => {

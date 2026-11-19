@@ -25,6 +25,8 @@ import {
 import { TeacherRoleService } from '../services/teacher-role.service';
 import { PermissionService } from '../services/permission.service';
 import { Permission } from '../models/permission.model';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 interface PermissionGroup {
   key: string;
@@ -44,7 +46,8 @@ interface PermissionDependency {
   standalone: true,
   imports: [
     CommonModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    InlineFeedbackComponent
   ],
   templateUrl: './teacher-role-form.html',
   styleUrl: './teacher-role-form.scss'
@@ -91,6 +94,9 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
 
   private readonly cdr =
     inject(ChangeDetectorRef);
+
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
 
   // =========================================================
@@ -157,7 +163,7 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
       key: 'student-information',
       title: 'Student Information',
       description:
-        'Control which student information teachers can access.',
+        'Student management workflows require Student Name viewing access. Additional view permissions control visible fields.',
       codes: [
         'STUDENT_VIEW_NAME',
         'STUDENT_VIEW_ROLL_NUMBER',
@@ -170,7 +176,7 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
       key: 'student-management',
       title: 'Student Management',
       description:
-        'Control student creation, editing, status updates and deletion.',
+        'Control student creation, field-level editing, status updates and deletion. These actions require Student Name viewing access.',
       codes: [
         'STUDENT_CREATE',
         'STUDENT_UPDATE',
@@ -178,6 +184,7 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
         'STUDENT_EDIT_ROLL_NUMBER',
         'STUDENT_EDIT_EMAIL',
         'STUDENT_EDIT_PHONE',
+        'STUDENT_EDIT_ADDRESS',
         'STUDENT_EDIT_ENROLLMENT',
         'STUDENT_UPDATE_STATUS',
         'STUDENT_DELETE'
@@ -226,13 +233,9 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
       {
         actionCode: 'STUDENT_CREATE',
         requiredCodes: [
-          'STUDENT_VIEW_NAME',
-          'STUDENT_VIEW_ROLL_NUMBER',
-          'STUDENT_VIEW_EMAIL',
-          'STUDENT_VIEW_PHONE',
-          'STUDENT_VIEW_STATUS'
+          'STUDENT_VIEW_NAME'
         ],
-        mode: 'any'
+        mode: 'all'
       },
 
       {
@@ -246,7 +249,7 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
       {
         actionCode: 'STUDENT_EDIT_ROLL_NUMBER',
         requiredCodes: [
-          'STUDENT_VIEW_ROLL_NUMBER'
+          'STUDENT_VIEW_NAME'
         ],
         mode: 'all'
       },
@@ -254,7 +257,7 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
       {
         actionCode: 'STUDENT_EDIT_EMAIL',
         requiredCodes: [
-          'STUDENT_VIEW_EMAIL'
+          'STUDENT_VIEW_NAME'
         ],
         mode: 'all'
       },
@@ -262,7 +265,15 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
       {
         actionCode: 'STUDENT_EDIT_PHONE',
         requiredCodes: [
-          'STUDENT_VIEW_PHONE'
+          'STUDENT_VIEW_NAME'
+        ],
+        mode: 'all'
+      },
+
+      {
+        actionCode: 'STUDENT_EDIT_ADDRESS',
+        requiredCodes: [
+          'STUDENT_VIEW_NAME'
         ],
         mode: 'all'
       },
@@ -270,19 +281,15 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
       {
         actionCode: 'STUDENT_EDIT_ENROLLMENT',
         requiredCodes: [
-          'STUDENT_VIEW_NAME',
-          'STUDENT_VIEW_ROLL_NUMBER',
-          'STUDENT_VIEW_EMAIL',
-          'STUDENT_VIEW_PHONE',
-          'STUDENT_VIEW_STATUS'
+          'STUDENT_VIEW_NAME'
         ],
-        mode: 'any'
+        mode: 'all'
       },
 
       {
         actionCode: 'STUDENT_UPDATE_STATUS',
         requiredCodes: [
-          'STUDENT_VIEW_STATUS'
+          'STUDENT_VIEW_NAME'
         ],
         mode: 'all'
       },
@@ -290,13 +297,9 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
       {
         actionCode: 'STUDENT_DELETE',
         requiredCodes: [
-          'STUDENT_VIEW_NAME',
-          'STUDENT_VIEW_ROLL_NUMBER',
-          'STUDENT_VIEW_EMAIL',
-          'STUDENT_VIEW_PHONE',
-          'STUDENT_VIEW_STATUS'
+          'STUDENT_VIEW_NAME'
         ],
-        mode: 'any'
+        mode: 'all'
       }
 
     ];
@@ -616,6 +619,20 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
   }
 
 
+  isLegacyPermission(permission: Permission): boolean {
+    return permission.code === 'STUDENT_UPDATE';
+  }
+
+
+  getPermissionDescription(permission: Permission): string {
+    if (this.isLegacyPermission(permission)) {
+      return 'Legacy compatibility permission. Student updates use the field-level STUDENT_EDIT_* permissions.';
+    }
+
+    return permission.description || permission.code;
+  }
+
+
   // =========================================================
   // PERMISSION SELECTION
   // =========================================================
@@ -646,6 +663,12 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
       return;
     }
 
+    if (this.isLegacyPermission(permission)) {
+      this.dependencyMessage =
+        'STUDENT_UPDATE is retained for compatibility and is not an active Student update authorization. Use the field-level STUDENT_EDIT_* permissions.';
+      return;
+    }
+
 
     this.addPermission(permission);
 
@@ -666,6 +689,10 @@ private permissionCards!: QueryList<ElementRef<HTMLElement>>;
     if (
       current.includes(permission.id)
     ) {
+      return;
+    }
+
+    if (this.isLegacyPermission(permission)) {
       return;
     }
 
@@ -1100,6 +1127,11 @@ toggleGroup(group: PermissionGroup): void {
     }
 
 
+    if (!this.hasValidPermissionDependencies()) {
+      return;
+    }
+
+
     this.submitting = true;
 
     this.errorMessage = '';
@@ -1137,7 +1169,7 @@ toggleGroup(group: PermissionGroup): void {
         )
         .subscribe({
 
-          next: () => {
+          next: (response: any) => {
 
             if (this.isPopupMode) {
 
@@ -1148,6 +1180,12 @@ toggleGroup(group: PermissionGroup): void {
               return;
 
             }
+
+            this.feedbackService.show({
+              kind: 'success',
+              message: response?.message || 'Teacher role updated successfully.',
+              persistAcrossNavigation: true
+            });
 
             this.router.navigate([
               '/admin/teacher-roles'
@@ -1189,7 +1227,7 @@ toggleGroup(group: PermissionGroup): void {
       .createRole(request)
       .subscribe({
 
-        next: () => {
+        next: (response: any) => {
 
           if (this.isPopupMode) {
 
@@ -1200,6 +1238,12 @@ toggleGroup(group: PermissionGroup): void {
             return;
 
           }
+
+          this.feedbackService.show({
+            kind: 'success',
+            message: response?.message || 'Teacher role created successfully.',
+            persistAcrossNavigation: true
+          });
 
           this.router.navigate([
             '/admin/teacher-roles'
@@ -1228,6 +1272,49 @@ toggleGroup(group: PermissionGroup): void {
 
       });
 
+  }
+
+
+  private hasValidPermissionDependencies(): boolean {
+    const selectedCodes = this.getSelectedPermissionCodes();
+
+    const invalidDependency = this.permissionDependencies.find(dependency => {
+      if (!selectedCodes.includes(dependency.actionCode)) {
+        return false;
+      }
+
+      if (dependency.mode === 'all') {
+        return !dependency.requiredCodes.every(code =>
+          selectedCodes.includes(code)
+        );
+      }
+
+      return !dependency.requiredCodes.some(code =>
+        selectedCodes.includes(code)
+      );
+    });
+
+    if (!invalidDependency) {
+      return true;
+    }
+
+    const action = this.getPermissionByCode(invalidDependency.actionCode);
+    const requiredNames = invalidDependency.requiredCodes.map(code =>
+      this.getPermissionByCode(code)?.name ?? code
+    );
+
+    this.dependencyMessage =
+      `"${action?.name ?? invalidDependency.actionCode}" requires ` +
+      `${requiredNames.join(invalidDependency.mode === 'any' ? ' or ' : ' and ')}.`;
+
+    const firstRequired = this.getPermissionByCode(
+      invalidDependency.requiredCodes[0]
+    );
+    if (firstRequired) {
+      this.scrollToPermission(firstRequired.id);
+    }
+
+    return false;
   }
 
 
@@ -1268,7 +1355,7 @@ toggleGroup(group: PermissionGroup): void {
     }
 
     const element =
-      this.permissionCards.get(permissionIndex)
+      this.permissionCards?.get(permissionIndex)
         ?.nativeElement;
 
     if (!element) {

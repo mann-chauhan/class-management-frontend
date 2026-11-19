@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
 import { AdvertisementService } from '../services/advertisement.service';
 import { AdvertisementSettingsComponent } from './advertisement-settings';
 
@@ -12,6 +13,7 @@ describe('AdvertisementSettingsComponent', () => {
     getSettings: ReturnType<typeof vi.fn>;
     updateSettings: ReturnType<typeof vi.fn>;
   };
+  let feedbackService: { show: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     service = {
@@ -27,12 +29,14 @@ describe('AdvertisementSettingsComponent', () => {
       })),
       updateSettings: vi.fn()
     };
+    feedbackService = { show: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [AdvertisementSettingsComponent],
       providers: [
         provideRouter([]),
-        { provide: AdvertisementService, useValue: service }
+        { provide: AdvertisementService, useValue: service },
+        { provide: ActionFeedbackService, useValue: feedbackService }
       ]
     }).compileComponents();
 
@@ -74,6 +78,74 @@ describe('AdvertisementSettingsComponent', () => {
       version: 4
     });
     expect(component.settings?.version).toBe(5);
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: expect.any(String)
+    });
+  });
+
+  it('shows contextual feedback without an error toast when saving fails', () => {
+    service.updateSettings.mockReturnValue(
+      throwError(() => ({ error: { message: 'Version conflict' } }))
+    );
+
+    component.saveSettings();
+    fixture.detectChanges();
+
+    expect(component.saveErrorMessage).toBe('Version conflict');
+    expect(feedbackService.show).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('app-inline-feedback')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.secondary-button')).toBeNull();
+  });
+
+  it('preserves edited values and releases the save guard after a failed save', () => {
+    component.defaultRotationIntervalSeconds = 12;
+    component.transitionDurationMs = 750;
+    service.updateSettings.mockReturnValue(throwError(() => ({ error: { message: 'Version conflict' } })));
+
+    component.saveSettings();
+
+    expect(component.saving).toBe(false);
+    expect(component.defaultRotationIntervalSeconds).toBe(12);
+    expect(component.transitionDurationMs).toBe(750);
+  });
+
+  it('prevents duplicate saves while the first request is pending', () => {
+    const pending = new Subject<unknown>();
+    service.updateSettings.mockReturnValue(pending.asObservable());
+
+    component.saveSettings();
+    component.saveSettings();
+
+    expect(service.updateSettings).toHaveBeenCalledTimes(1);
+    expect(component.saving).toBe(true);
+    pending.error({ error: { message: 'Temporary failure' } });
+    expect(component.saving).toBe(false);
+  });
+
+  it('treats a successful response without settings data as a save failure', () => {
+    service.updateSettings.mockReturnValue(of({ message: 'Saved' }));
+
+    component.saveSettings();
+
+    expect(component.saveErrorMessage).toBe('Advertisement settings could not be saved.');
+    expect(feedbackService.show).not.toHaveBeenCalled();
+  });
+
+  it('clears a prior save error on a later confirmed save and shows one success toast', () => {
+    service.updateSettings.mockReturnValue(throwError(() => ({ error: { message: 'Failed' } })));
+    component.saveSettings();
+    expect(component.saveErrorMessage).toBe('Failed');
+
+    service.updateSettings.mockReturnValue(of({
+      message: 'Saved',
+      data: { ...component.settings, version: 5 }
+    }));
+    component.saveSettings();
+
+    expect(component.saveErrorMessage).toBe('');
+    expect(feedbackService.show).toHaveBeenCalledTimes(1);
+    expect(feedbackService.show).toHaveBeenCalledWith({ kind: 'success', message: 'Saved' });
   });
 
   it('uses safe defaults for legacy settings and blocks out-of-range values', () => {
@@ -93,5 +165,6 @@ describe('AdvertisementSettingsComponent', () => {
     component.saveSettings();
     expect(service.updateSettings).not.toHaveBeenCalled();
     expect(component.timingValidationError).toContain('3 to 60 seconds');
+    expect(feedbackService.show).not.toHaveBeenCalled();
   });
 });

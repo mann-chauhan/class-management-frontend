@@ -6,13 +6,16 @@ import { FormsModule } from '@angular/forms';
 import { StudentFeeService } from '../services/student-fee.service';
 import { StudentFee } from '../models/student-fee.model';
 import { FeePayment } from '../models/fee-payment.model';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-student-fee-view',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    InlineFeedbackComponent
   ],
   templateUrl: './student-fee-view.html',
   styleUrl: './student-fee-view.scss'
@@ -23,6 +26,7 @@ export class StudentFeeView implements OnInit {
   private readonly router = inject(Router);
   private readonly studentFeeService = inject(StudentFeeService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   studentFee: StudentFee | null = null;
   payments: FeePayment[] = [];
@@ -305,11 +309,16 @@ export class StudentFeeView implements OnInit {
       )
       .subscribe({
 
-        next: () => {
+        next: (response: any) => {
 
           this.paymentSaving = false;
           this.showPaymentEdit = false;
           this.editingPayment = null;
+
+          this.feedbackService.show({
+            kind: 'success',
+            message: response?.message || 'Payment updated successfully.'
+          });
 
           if (this.studentFee) {
             this.loadStudentFee(this.studentFee.id);

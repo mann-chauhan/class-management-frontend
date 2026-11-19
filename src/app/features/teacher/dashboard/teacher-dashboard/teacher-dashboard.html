@@ -57,31 +57,13 @@
        ERROR
        ===================================================== -->
 
-  @if (errorMessage) {
-
-    <div class="dashboard-alert">
-
-      <div class="alert-icon">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 9v4m0 4h.01M10.3 3.9 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
-        </svg>
-      </div>
-
-      <div class="alert-content">
-        <strong>Unable to load dashboard</strong>
-        <span>{{ errorMessage }}</span>
-      </div>
-
-      <button
-        type="button"
-        class="alert-action"
-        (click)="retry()"
-      >
-        Retry
-      </button>
-
-    </div>
-
+  @if (permissionsError) {
+    <app-inline-feedback
+      kind="error"
+      title="Unable to load dashboard permissions"
+      [message]="permissionsError"
+      announcementPriority="polite" />
+    <button type="button" class="alert-action" (click)="retryPermissions()">Retry permissions</button>
   }
 
 
@@ -252,11 +234,13 @@
       </div>
 
 
-      @if (attendanceErrorMessage) {
-
-        <div class="section-alert">
-          {{ attendanceErrorMessage }}
-        </div>
+      @if (attendanceError) {
+        <app-inline-feedback
+          kind="error"
+          title="Unable to load attendance"
+          [message]="attendanceError"
+          announcementPriority="polite" />
+        <button type="button" class="alert-action" (click)="retryAttendance()">Retry attendance</button>
 
       } @else {
 
@@ -574,7 +558,14 @@
     </div>
 
 
-    @if (assignments.length === 0) {
+    @if (assignmentsError) {
+      <app-inline-feedback
+        kind="error"
+        title="Unable to load assignments"
+        [message]="assignmentsError"
+        announcementPriority="polite" />
+      <button type="button" class="alert-action" (click)="retryAssignments()">Retry assignments</button>
+    } @else if (assignments.length === 0) {
 
       <div class="empty-state">
 
@@ -640,6 +631,17 @@
     }
 
   </section>
+
+  @if (assignmentRecordsError) {
+    <section class="dashboard-section">
+      <app-inline-feedback
+        kind="error"
+        title="Unable to load assignment records"
+        [message]="assignmentRecordsError"
+        announcementPriority="polite" />
+      <button type="button" class="alert-action" (click)="retryAssignmentRecords()">Retry assignment records</button>
+    </section>
+  }
 
 
   <!-- =====================================================

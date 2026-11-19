@@ -13,11 +13,12 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { InlineFeedbackComponent } from '../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, InlineFeedbackComponent],
   templateUrl: './reset-password.component.html',
   styleUrl: './reset-password.component.scss',
 })
@@ -114,17 +115,11 @@ export class ResetPasswordComponent {
 
           this.ngZone.run(() => {
 
-            console.error(
-              'Reset password request failed:',
-              error
-            );
-
             this.isLoading = false;
 
             if (error.status === 400) {
 
               this.errorMessage =
-                error.error?.message ||
                 'This password reset link is invalid or has expired.';
 
             } else if (error.status === 0) {

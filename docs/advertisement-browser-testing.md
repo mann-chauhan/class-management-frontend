@@ -5,12 +5,38 @@ uses `playwright.advertisement.config.ts` and `e2e/advertisement/`; it does not
 load the Leave global setup, read Leave manifests, create fixtures, or run
 cleanup.
 
+## Suite selection and execution gate
+
+The Advertisement suite is independently selectable with:
+
+```bash
+npm run e2e:advertisement
+```
+
+That command uses `playwright.advertisement.config.ts`, the Advertisement
+global setup, the Advertisement-specific output/report directories, and the
+desktop/mobile projects. It is not included in the default Leave-only
+configuration.
+
+The dedicated backend launcher is now:
+
+```bash
+# Run from the class-management-system repository.
+bash scripts/run-advertisement-browser-backend.sh
+```
+
+It selects `advertisement-browser-test` and must be used instead of the Leave
+launcher. The command remains gated: it has not been executed, and the suite
+must not run until database identity, credentials, synthetic fixtures, safe
+cleanup, and separate execution approval are all established.
+
 ## Fixed endpoints
 
 - Frontend: `http://localhost:14200`, served with Angular's `browser-test`
   configuration.
-- Backend: `http://localhost:18080`, started separately with the reviewed,
-  isolated backend launcher.
+- Backend: `http://localhost:18080`, started separately with
+  `bash scripts/run-advertisement-browser-backend.sh` from the backend
+  repository.
 - API: `http://localhost:18080/api/v1` only.
 - Database: the backend must independently prove it is using the approved
   isolated database `cms_leave_test` on PostgreSQL port `5432` and loopback.
@@ -21,9 +47,10 @@ rejects `DB_URL`, `DATABASE_URL`, and `SPRING_DATASOURCE_URL` in the test
 process. It does not start the backend, run migrations, create accounts, or
 clean up database rows.
 
-The backend must use the dedicated `advertisement-browser-test` profile. It
-reuses the fixed datasource guard, keeps Hibernate in `validate` mode, disables
-Flyway at startup, and requires `ADVERTISEMENT_BROWSER_TEST_MEDIA_DIRECTORY`.
+The backend launcher selects the dedicated `advertisement-browser-test`
+profile. That profile uses the fixed `BrowserTestDataSourceConfig`, keeps
+Hibernate in `validate` mode, disables Flyway at startup, and requires
+`ADVERTISEMENT_BROWSER_TEST_MEDIA_DIRECTORY`.
 That directory must be isolated, pre-created, and different from production or
 default media storage.
 
@@ -53,9 +80,15 @@ accounts. The tests do not guess credentials and do not support mock JWTs.
 ## Fixture contract
 
 The backend must be provisioned separately by an approved mechanism before a
-run. This repository currently contains Leave-only fixture scripts and no
-Advertisement fixture creator, so this phase intentionally does not invent or
-execute one.
+run. The backend contains partial Advertisement fixture-domain services and
+offline manifest tooling, but it does not currently provide an approved,
+runnable setup path for this suite: the database creator supports only the
+minimal Admin/Advertisement mode and explicitly does not create Teacher or
+Student identities. The browser-test media adapter now provides isolated,
+validated staging/finalization when the explicit media directory is supplied,
+but ownership-aware final media deletion is not wired into cleanup and the
+cleanup store/resource-operation adapters remain fail-closed. This phase
+therefore does not invent or execute fixture setup.
 
 The approved environment must provide, in the Admin's tenant:
 
@@ -77,21 +110,12 @@ publish, archive, upload, or clean Advertisement records. Login/logout creates
 and revokes only the test authentication sessions through the real authentication
 API; that write must be included in the runtime authorization review.
 
-## Run after independent approval
+## Run only after independent approval is complete
 
-Start the isolated backend first with the `advertisement-browser-test` profile,
-using its guarded launcher, the reviewed `cms_leave_test` datasource, and the
-isolated media-directory variable. Confirm port `14200` is unused before allowing
-Playwright to start the frontend. Then run with the process-local variables
-above:
-
-The reviewed backend launcher must select the profile explicitly, for example:
-
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=advertisement-browser-test
-```
-
-This command is documentation only and was not executed during Phase 2.
+Start the backend with the launcher above, the reviewed `cms_leave_test`
+datasource, and the isolated media-directory variable. Confirm port `14200` is
+unused before allowing Playwright to start the frontend. The commands below
+remain documentation only and were not executed during Phase 9A-5:
 
 ```bash
 npm run e2e:advertisement
@@ -141,6 +165,31 @@ The cleanup preflight intentionally refuses deletion until a later approved
 application-backed integration verifies every manifest ID, tenant relationship,
 media ownership, and exact storage key. No broad deletion by title, email, or
 marker is supported.
+
+The backend Phase 9A-5C contract foundation now connects the supported
+Admin/Advertisement creator to typed run ownership evidence. Evidence uses
+actual Admin/User, settings/Admin, Advertisement/Admin/creating-User, and
+media/Advertisement IDs, plus exact media storage keys and current entity
+versions where available. A deterministic relationship fingerprint deliberately
+excludes credentials, display names, and media bytes. Legacy incomplete creator
+records cannot enter ledger registration. The fixture-only read contract covers
+the complete identity and academic graph at the interface level, while
+ownership-proving adapters remain limited to the currently supported
+Admin/settings/Advertisement/media reads. Phase 9A-5D adds a browser-profile,
+read-only repository adapter for Teacher, Student, enrollment relationships,
+AcademicYear, ClassRoom, Section, Branch, BoardMedium, and optional School.
+Standalone User ownership remains unsupported; only the scoped Admin-to-User
+association is reported. Read snapshots can provide typed relationship IDs for
+fingerprinting, but academic resources remain outside the fixture ledger.
+
+AcademicYear, ClassRoom, Section, Branch, BoardMedium, enrollment, assignments,
+role scopes, fees, and attendance are shared-prerequisite or unsupported
+resources, not fixture-owned cleanup records. The source-backed safe dependency
+order remains media, Advertisement, settings, Admin, then User. Teacher,
+Student, academic resources, and the conceptual Tenant resource remain
+unsupported for cleanup. The cleanup store and destructive resource-operation
+adapters therefore remain fail-closed; successful read verification does not
+authorize deletion and does not constitute database-backed setup or teardown.
 
 Runtime execution of this tooling remains unverified and was not performed in
 this phase.

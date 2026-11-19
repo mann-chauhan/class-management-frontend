@@ -12,6 +12,8 @@ import { TeacherRoleService } from '../services/teacher-role.service';
 import { TeacherRole } from '../models/teacher-role.model';
 import { TeacherRoleForm } from '../teacher-role-form/teacher-role-form';
 import { Router } from '@angular/router';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-teacher-role-list',
@@ -19,7 +21,8 @@ import { Router } from '@angular/router';
   imports: [
     CommonModule,
     FormsModule,
-    TeacherRoleForm
+    TeacherRoleForm,
+    InlineFeedbackComponent
   ],
   templateUrl: './teacher-role-list.html',
   styleUrl: './teacher-role-list.scss'
@@ -31,6 +34,9 @@ export class TeacherRoleList implements OnInit {
 
   private readonly cdr =
     inject(ChangeDetectorRef);
+
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
 
 
@@ -47,7 +53,6 @@ export class TeacherRoleList implements OnInit {
 
   errorMessage = '';
 
-  successMessage = '';
 
 
   // =========================================================
@@ -368,7 +373,6 @@ export class TeacherRoleList implements OnInit {
 
     this.errorMessage = '';
 
-    this.successMessage = '';
 
     this.showRoleDrawer = true;
   }
@@ -425,7 +429,6 @@ export class TeacherRoleList implements OnInit {
 
     this.errorMessage = '';
 
-    this.successMessage = '';
 
     this.showRoleDrawer = true;
   }
@@ -445,7 +448,6 @@ export class TeacherRoleList implements OnInit {
 
     this.errorMessage = '';
 
-    this.successMessage = '';
 
     this.showRoleDrawer = true;
   }
@@ -476,22 +478,17 @@ export class TeacherRoleList implements OnInit {
     this.closeRoleDrawer();
 
 
-    this.successMessage =
-      wasEdit
+    this.feedbackService.show({
+      kind: 'success',
+      message: wasEdit
         ? 'Teacher role updated successfully.'
-        : 'Teacher role created successfully.';
+        : 'Teacher role created successfully.'
+    });
 
 
     this.loadRoles();
 
 
-    window.setTimeout(() => {
-
-      this.successMessage = '';
-
-      this.cdr.detectChanges();
-
-    }, 4000);
   }
 
 
@@ -558,8 +555,10 @@ export class TeacherRoleList implements OnInit {
 
           this.selectedRole = null;
 
-          this.successMessage =
-            'Teacher role deactivated successfully.';
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Teacher role deactivated successfully.'
+          });
 
           this.loadRoles();
 
@@ -649,8 +648,10 @@ export class TeacherRoleList implements OnInit {
 
           this.selectedRole = null;
 
-          this.successMessage =
-            'Teacher role deleted successfully.';
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Teacher role deleted successfully.'
+          });
 
           this.loadRoles();
 

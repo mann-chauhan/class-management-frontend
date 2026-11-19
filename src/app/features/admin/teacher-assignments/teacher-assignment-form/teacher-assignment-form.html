@@ -30,17 +30,11 @@
 
   <!-- ALERTS -->
   @if (errorMessage) {
-    <div class="alert alert-error">
-      <span class="alert-icon">!</span>
-      <span>{{ errorMessage }}</span>
-    </div>
-  }
-
-  @if (successMessage) {
-    <div class="alert alert-success">
-      <span class="alert-icon">✓</span>
-      <span>{{ successMessage }}</span>
-    </div>
+    <app-inline-feedback
+      kind="error"
+      title="Teacher assignment action failed"
+      [message]="errorMessage"
+      announcementPriority="polite" />
   }
 
 

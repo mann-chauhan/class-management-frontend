@@ -164,4 +164,22 @@
       </footer>
     }
   </section>
+
+  <app-confirmation-dialog
+    [visible]="pendingAction !== null"
+    [title]="confirmationTitle"
+    [message]="confirmationMessage"
+    [confirmLabel]="confirmationConfirmLabel"
+    cancelLabel="Cancel"
+    [danger]="confirmationDanger"
+    [busy]="busyExamId !== null"
+    busyLabel="Working..."
+    (confirmed)="confirmPendingAction()"
+    (cancelled)="cancelPendingAction()"
+  >
+    @if (mutationError) {
+      <app-inline-feedback kind="error" title="Exam action failed" [message]="mutationError" announcementPriority="polite" />
+    }
+  </app-confirmation-dialog>
+
 </section>

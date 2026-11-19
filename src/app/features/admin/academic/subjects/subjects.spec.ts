@@ -1,11 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ChangeDetectorRef } from '@angular/core';
-import { of, throwError } from 'rxjs';
+import { of, Subject as RxSubject, throwError } from 'rxjs';
 
 import { SubjectsComponent } from './subjects';
 import { SubjectService } from './subject.service';
 import { ClassService } from '../classes/class.service';
 import { Subject } from './subject.model';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
 
 describe('SubjectsComponent', () => {
   let component: SubjectsComponent;
@@ -17,6 +18,7 @@ describe('SubjectsComponent', () => {
     deleteSubject: ReturnType<typeof vi.fn>;
   };
   let classService: { getClasses: ReturnType<typeof vi.fn> };
+  let feedbackService: { show: ReturnType<typeof vi.fn> };
 
   const subjects: Subject[] = [
     {
@@ -62,6 +64,7 @@ describe('SubjectsComponent', () => {
     classService = {
       getClasses: vi.fn()
     };
+    feedbackService = { show: vi.fn() };
 
     subjectService.getSubjects.mockReturnValue(of(apiResponse(subjects)));
     classService.getClasses.mockReturnValue(of(apiResponse([
@@ -81,7 +84,8 @@ describe('SubjectsComponent', () => {
       imports: [SubjectsComponent],
       providers: [
         { provide: SubjectService, useValue: subjectService },
-        { provide: ClassService, useValue: classService }
+        { provide: ClassService, useValue: classService },
+        { provide: ActionFeedbackService, useValue: feedbackService }
       ]
     }).compileComponents();
 
@@ -140,6 +144,10 @@ describe('SubjectsComponent', () => {
     });
     expect(component.showForm).toBe(false);
     expect(subjectService.getSubjects).toHaveBeenCalledTimes(2);
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: 'Success'
+    });
   });
 
   it('should trim values before creating a subject', () => {
@@ -179,6 +187,38 @@ describe('SubjectsComponent', () => {
       classId: 2
     });
     expect(component.showForm).toBe(false);
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: 'Success'
+    });
+  });
+
+  it('preserves the edit form and shows an update error without a success toast', () => {
+    subjectService.updateSubject.mockReturnValue(
+      throwError(() => ({ error: { message: 'Unable to update subject' } }))
+    );
+    component.openEditForm(subjects[0]);
+    component.form.name = 'Updated subject';
+
+    component.saveSubject();
+
+    expect(component.showForm).toBe(true);
+    expect(component.form.name).toBe('Updated subject');
+    expect(component.errorMessage).toBe('Unable to update subject');
+    expect(feedbackService.show).not.toHaveBeenCalled();
+  });
+
+  it('prevents duplicate subject creates while the first request is pending', () => {
+    const pending = new RxSubject<unknown>();
+    subjectService.createSubject.mockReturnValue(pending.asObservable());
+    component.form = { name: 'Biology', code: 'BIO', classId: 1 };
+
+    component.saveSubject();
+    component.saveSubject();
+
+    expect(subjectService.createSubject).toHaveBeenCalledTimes(1);
+    pending.error({ error: { message: 'Create failed' } });
+    expect(component.saving).toBe(false);
   });
 
   it('should open and cancel delete confirmation', () => {
@@ -203,6 +243,23 @@ describe('SubjectsComponent', () => {
     expect(subjectService.deleteSubject).toHaveBeenCalledWith(1);
     expect(component.showDeleteDialog).toBe(false);
     expect(subjectService.getSubjects).toHaveBeenCalledTimes(2);
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: 'Success'
+    });
+  });
+
+  it('keeps the subject list unchanged and shows delete failure feedback', () => {
+    subjectService.deleteSubject.mockReturnValue(
+      throwError(() => ({ error: { message: 'Unable to delete subject' } }))
+    );
+
+    component.deleteSubject(subjects[0]);
+    component.confirmDeleteSubject();
+
+    expect(component.subjects).toEqual(subjects);
+    expect(component.errorMessage).toBe('Unable to delete subject');
+    expect(feedbackService.show).not.toHaveBeenCalled();
   });
 
   it('should handle a subject-loading error', () => {

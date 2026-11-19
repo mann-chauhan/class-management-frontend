@@ -2,6 +2,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
 
 import {
   DataTableComponent,
@@ -11,6 +12,7 @@ import {
 import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 import {
   Branch,
@@ -26,7 +28,8 @@ import { BranchService } from './services/branch.service';
     DataTableComponent,
     SearchInputComponent,
     PageHeaderComponent,
-    ConfirmationDialogComponent,
+  ConfirmationDialogComponent,
+    InlineFeedbackComponent,
   ],
   templateUrl: './branch.html',
   styleUrl: './branch.scss',
@@ -34,6 +37,7 @@ import { BranchService } from './services/branch.service';
 export class BranchComponent implements OnInit {
   private readonly branchService = inject(BranchService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   columns: TableColumn[] = [
     {
@@ -63,8 +67,10 @@ export class BranchComponent implements OnInit {
 
   loading = false;
   saving = false;
-  errorMessage = '';
-  successMessage = '';
+  deleting = false;
+  loadError = '';
+  formError = '';
+  deactivationError = '';
 
   showForm = false;
   editingBranch: Branch | null = null;
@@ -83,16 +89,17 @@ export class BranchComponent implements OnInit {
 
   loadBranches(): void {
     this.loading = true;
-    this.errorMessage = '';
+    this.loadError = '';
 
     this.branchService.getAll(0, 100, 'name,asc').subscribe({
       next: (response) => {
         this.branches = response.content ?? [];
+        this.loadError = '';
         this.loading = false;
         this.cdr.markForCheck();
       },
       error: (error) => {
-        this.errorMessage =
+        this.loadError =
           error?.error?.message || 'Failed to load branches.';
         this.loading = false;
         this.cdr.markForCheck();
@@ -120,8 +127,7 @@ export class BranchComponent implements OnInit {
   openCreateForm(): void {
     this.editingBranch = null;
     this.form = { name: '', status: 'ACTIVE' };
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.formError = '';
     this.showForm = true;
   }
 
@@ -131,8 +137,7 @@ export class BranchComponent implements OnInit {
       name: branch.name,
       status: branch.isActive ? 'ACTIVE' : 'INACTIVE',
     };
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.formError = '';
     this.showForm = true;
   }
 
@@ -144,10 +149,12 @@ export class BranchComponent implements OnInit {
   }
 
   saveBranch(): void {
+    if (this.saving) return;
+
     const name = this.form.name.trim();
 
     if (!name) {
-      this.errorMessage = 'Branch name is required.';
+      this.formError = 'Branch name is required.';
       return;
     }
 
@@ -158,12 +165,12 @@ export class BranchComponent implements OnInit {
     );
 
     if (duplicate) {
-      this.errorMessage = 'A branch with this name already exists.';
+      this.formError = 'A branch with this name already exists.';
       return;
     }
 
     this.saving = true;
-    this.errorMessage = '';
+    this.formError = '';
 
     const operation = this.editingBranch
       ? this.branchService.update(this.editingBranch.id, { name })
@@ -171,18 +178,22 @@ export class BranchComponent implements OnInit {
 
     operation.subscribe({
       next: () => {
+        const wasEditing = !!this.editingBranch;
         this.saving = false;
         this.showForm = false;
-        this.successMessage = this.editingBranch
-          ? 'Branch updated successfully.'
-          : 'Branch created successfully.';
+        this.feedbackService.show({
+          kind: 'success',
+          message: wasEditing
+            ? 'Branch updated successfully.'
+            : 'Branch created successfully.'
+        });
         this.editingBranch = null;
         this.loadBranches();
         this.cdr.markForCheck();
       },
       error: (error) => {
         this.saving = false;
-        this.errorMessage =
+        this.formError =
           error?.error?.message || 'Failed to save branch.';
         this.cdr.markForCheck();
       },
@@ -194,35 +205,42 @@ export class BranchComponent implements OnInit {
       this.openEditForm(event.row);
     } else if (event.action.type === 'delete') {
       this.branchToDelete = event.row;
+      this.deactivationError = '';
       this.showDeleteDialog = true;
     }
   }
 
   confirmDeactivate(): void {
-    if (!this.branchToDelete) return;
+    if (!this.branchToDelete || this.deleting) return;
 
     const branch = this.branchToDelete;
-    this.showDeleteDialog = false;
-    this.errorMessage = '';
+    this.deactivationError = '';
+    this.deleting = true;
 
     this.branchService.delete(branch.id).subscribe({
       next: () => {
-        this.successMessage = 'Branch deactivated successfully.';
-        this.branchToDelete = null;
+        this.deleting = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: 'Branch deactivated successfully.'
+        });
+        this.cancelDeactivate();
         this.loadBranches();
         this.cdr.markForCheck();
       },
       error: (error) => {
-        this.errorMessage =
+        this.deactivationError =
           error?.error?.message || 'Failed to deactivate branch.';
-        this.branchToDelete = null;
+        this.deleting = false;
         this.cdr.markForCheck();
       },
     });
   }
 
   cancelDeactivate(): void {
+    if (this.deleting) return;
     this.showDeleteDialog = false;
     this.branchToDelete = null;
+    this.deactivationError = '';
   }
 }

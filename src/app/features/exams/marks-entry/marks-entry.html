@@ -23,12 +23,12 @@
     }
   </header>
 
-  @if (errorMessage) {
-    <div class="alert-error" role="alert">{{ errorMessage }}</div>
+  @if (loadError) {
+    <app-inline-feedback kind="error" title="Unable to load marks workspace" [message]="loadError" announcementPriority="polite" />
   }
 
-  @if (successMessage) {
-    <div class="alert-success" role="status">{{ successMessage }}</div>
+  @if (errorMessage) {
+    <app-inline-feedback kind="error" title="Unable to save marks" [message]="errorMessage" announcementPriority="polite" />
   }
 
   @if (exam?.status === 'PUBLISHED') {
@@ -83,7 +83,7 @@
               will be deselected so you can continue with another group.
             </p>
             @if (bulkActionError) {
-              <div class="bulk-confirm-error" role="alert">{{ bulkActionError }}</div>
+              <app-inline-feedback kind="error" title="Bulk mark update failed" [message]="bulkActionError" announcementPriority="polite" />
             }
           </div>
           <div class="bulk-confirm-actions">

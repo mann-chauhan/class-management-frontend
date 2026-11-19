@@ -28,6 +28,8 @@ import { AcademicYearService } from '../academic-years/services/academic-year.se
 
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 
 interface FormSection {
@@ -44,7 +46,8 @@ interface FormSection {
     FormsModule,
     PageHeaderComponent,
     SearchInputComponent,
-  ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    InlineFeedbackComponent
   ],
   templateUrl: './classes.html',
   styleUrl: './classes.scss'
@@ -62,6 +65,9 @@ export class ClassesComponent implements OnInit {
 
   private readonly cdr =
     inject(ChangeDetectorRef);
+
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
 
   // =========================
@@ -94,6 +100,8 @@ export class ClassesComponent implements OnInit {
   loading = false;
 
   saving = false;
+
+  deleting = false;
 
   errorMessage = '';
 
@@ -804,10 +812,11 @@ cancelDelete(): void {
 confirmDeleteClass(): void {
   const cls = this.classToDelete;
 
-  if (!cls) {
+  if (!cls || this.deleting) {
     return;
   }
 
+  this.deleting = true;
   this.showDeleteDialog = false;
   this.classToDelete = null;
   this.deleteType = null;
@@ -817,16 +826,17 @@ confirmDeleteClass(): void {
   this.classService
     .deleteClass(cls.id)
     .subscribe({
-      next: () => {
+      next: response => {
+        this.deleting = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: response.message || 'Class deleted successfully.'
+        });
         this.loadClasses();
       },
 
       error: error => {
-        console.error(
-          'Failed to delete class:',
-          error
-        );
-
+        this.deleting = false;
         this.errorMessage =
           error?.error?.message ||
           'Failed to delete class.';
@@ -852,10 +862,11 @@ confirmDeleteClass(): void {
 confirmDeleteSection(): void {
   const section = this.sectionToDelete;
 
-  if (!section) {
+  if (!section || this.deleting) {
     return;
   }
 
+  this.deleting = true;
   this.showDeleteDialog = false;
   this.sectionToDelete = null;
   this.deleteType = null;
@@ -865,16 +876,17 @@ confirmDeleteSection(): void {
   this.sectionService
     .deleteSection(section.id)
     .subscribe({
-      next: () => {
+      next: response => {
+        this.deleting = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: response.message || 'Section deleted successfully.'
+        });
         this.loadClasses();
       },
 
       error: error => {
-        console.error(
-          'Failed to delete section:',
-          error
-        );
-
+        this.deleting = false;
         this.errorMessage =
           error?.error?.message ||
           'Failed to delete section.';

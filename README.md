@@ -46,11 +46,27 @@ ng test
 
 ## Running end-to-end tests
 
-For end-to-end (e2e) testing, run:
+For the isolated Leave end-to-end suite, run:
 
 ```bash
-ng e2e
+npm run e2e
 ```
+
+The Advertisement and Admin Password Reset suites use their own Playwright
+configurations:
+
+```bash
+npm run e2e:advertisement
+npm run e2e:admin-password-reset
+```
+
+These commands require their documented backend, credentials, and synthetic
+fixture prerequisites; configuration selection alone does not mean that the
+environment is ready to execute them.
+
+Advertisement backend startup is documented in
+`class-management-system/scripts/run-advertisement-browser-backend.sh` and
+must use the `advertisement-browser-test` profile.
 
 Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 

@@ -40,6 +40,10 @@ export class ConfirmationDialogComponent implements AfterViewInit, OnDestroy {
 
   @Input() danger = true;
 
+  @Input() busy = false;
+
+  @Input() busyLabel = 'Processing...';
+
   @Output() confirmed = new EventEmitter<void>();
 
   @Output() cancelled = new EventEmitter<void>();

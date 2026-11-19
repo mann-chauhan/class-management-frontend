@@ -38,10 +38,20 @@
     </label>
   </div>
 
-  <p *ngIf="errorMessage" class="message error-message" role="alert">
-    {{ errorMessage }}
-    <button type="button" (click)="loadResults()">Try again</button>
-  </p>
+  <div *ngIf="errorMessage" class="message error-message">
+    <app-inline-feedback
+      kind="error"
+      title="Exam results could not be loaded"
+      [message]="errorMessage"
+    />
+    <button
+      type="button"
+      [disabled]="loading"
+      (click)="loadResults()"
+    >
+      Retry loading exam results
+    </button>
+  </div>
 
   <div *ngIf="loading" class="message loading-message">
     Loading your exam results…

@@ -18,7 +18,11 @@
   <!-- Error -->
   @if (!loading && errorMessage && !studentFee) {
     <section class="state-card error">
-      <p>{{ errorMessage }}</p>
+      <app-inline-feedback
+        kind="error"
+        title="Payment form unavailable"
+        [message]="errorMessage"
+        announcementPriority="polite" />
     </section>
   }
 
@@ -391,9 +395,11 @@
 
         <!-- Error -->
         @if (errorMessage) {
-          <div class="form-error">
-            {{ errorMessage }}
-          </div>
+          <app-inline-feedback
+            kind="error"
+            title="Payment failed"
+            [message]="errorMessage"
+            announcementPriority="polite" />
         }
 
         <!-- Actions -->

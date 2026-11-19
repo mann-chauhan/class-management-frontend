@@ -1,5 +1,10 @@
 <div class="students-insider">
 
+    @if (errorMessage) {
+      <app-inline-feedback kind="error" title="Student insights could not be loaded"
+        [message]="errorMessage" announcementPriority="assertive" />
+    }
+
     <!-- =======================================================
        PAGE HEADER
        ======================================================= -->

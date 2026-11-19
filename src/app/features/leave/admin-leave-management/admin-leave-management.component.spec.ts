@@ -5,6 +5,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { AcademicYearService } from '../../admin/academic/academic-years/services/academic-year.service';
 import { LeaveService } from '../services/leave.service';
 import { AdminLeaveManagementComponent } from './admin-leave-management.component';
+import { ActionFeedbackService } from '../../../core/services/action-feedback.service';
 
 describe('AdminLeaveManagementComponent', () => {
   let component: AdminLeaveManagementComponent;
@@ -18,6 +19,7 @@ describe('AdminLeaveManagementComponent', () => {
     approve: ReturnType<typeof vi.fn>;
     reject: ReturnType<typeof vi.fn>;
   };
+  let feedbackService: { show: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     service = {
@@ -34,6 +36,7 @@ describe('AdminLeaveManagementComponent', () => {
       approve: vi.fn(),
       reject: vi.fn()
     };
+    feedbackService = { show: vi.fn() };
 
     const academicYears = {
       getAll: vi.fn().mockReturnValue(of({
@@ -46,7 +49,8 @@ describe('AdminLeaveManagementComponent', () => {
       imports: [AdminLeaveManagementComponent],
       providers: [
         { provide: LeaveService, useValue: service },
-        { provide: AcademicYearService, useValue: academicYears }
+        { provide: AcademicYearService, useValue: academicYears },
+        { provide: ActionFeedbackService, useValue: feedbackService }
       ]
     }).compileComponents();
 
@@ -225,10 +229,15 @@ describe('AdminLeaveManagementComponent', () => {
     component.selected = pending;
 
     component.decide('approve');
+    component.confirmDecision();
 
     expect(service.approve).toHaveBeenCalledWith(51, { comment: '' });
     expect(component.selected?.status).toBe('APPROVED');
-    expect(component.success).toBe('Approved');
+    expect(feedbackService.show).toHaveBeenCalledTimes(1);
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: 'Approved'
+    });
     expect(component.processingId).toBeNull();
     expect(service.adminSummary).toHaveBeenCalled();
     vi.restoreAllMocks();
@@ -254,10 +263,47 @@ describe('AdminLeaveManagementComponent', () => {
     component.comment = 'Insufficient notice';
 
     component.decide('reject');
+    component.confirmDecision();
 
     expect(service.reject).toHaveBeenCalledWith(52, { comment: 'Insufficient notice' });
-    expect(component.decisionError).toBe('Reject failed');
+    expect(component.dialogDecisionError).toBe('Reject failed');
     expect(component.selected?.status).toBe('PENDING');
+    expect(component.comment).toBe('Insufficient notice');
+    expect(component.processingId).toBeNull();
+    component.detailsOpen = true;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-inline-feedback')).not.toBeNull();
+    vi.restoreAllMocks();
+  });
+
+  it('still requires a rejection comment before opening the native confirmation', () => {
+    const pending = { id: 53, status: 'PENDING' } as any;
+    component.selected = pending;
+    component.comment = '   ';
+    component.decide('reject');
+
+    expect(component.decisionError).toBe('A rejection comment is required.');
+    expect(service.reject).not.toHaveBeenCalled();
+  });
+
+  it('blocks duplicate Admin decisions while the first request is pending', () => {
+    const decision = new Subject<any>();
+    const pending = { id: 54, status: 'PENDING' } as any;
+    service.approve.mockReturnValue(decision);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    component.selected = pending;
+
+    component.decide('approve');
+    component.confirmDecision();
+    component.decide('approve');
+    component.confirmDecision();
+
+    expect(service.approve).toHaveBeenCalledTimes(1);
+    expect(component.processingId).toBe(54);
+
+    decision.next({ success: true, message: 'Approved', data: { ...pending, status: 'APPROVED' } });
+    decision.complete();
+
     expect(component.processingId).toBeNull();
     vi.restoreAllMocks();
   });

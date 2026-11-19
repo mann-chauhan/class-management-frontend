@@ -57,44 +57,8 @@
        NOTIFICATIONS
        ========================================================= -->
 
-  @if (successMessage) {
-
-  <div class="notification success-notification" role="status">
-
-    <span class="notification-symbol">
-      ✓
-    </span>
-
-    <span>
-      {{ successMessage }}
-    </span>
-
-  </div>
-
-  }
-
-
-  @if (errorMessage && !showDeactivateConfirm) {
-
-  <div class="notification error-notification" role="alert">
-
-    <span class="notification-symbol">
-      !
-    </span>
-
-    <div>
-
-      <strong>
-        Something went wrong
-      </strong>
-
-      <span>
-        {{ errorMessage }}
-      </span>
-
-    </div>
-
-  </div>
+  @if (errorMessage && !showDeactivateConfirm && !showDeleteConfirm) {
+    <app-inline-feedback kind="error" title="Teacher role action failed" [message]="errorMessage" announcementPriority="polite" />
 
   }
 
@@ -975,27 +939,11 @@
         !deactivating
       ) {
 
-        <div
-          class="modal-error"
-          role="alert">
-
-          <span>
-            !
-          </span>
-
-          <div>
-
-            <strong>
-              Unable to deactivate role
-            </strong>
-
-            <p>
-              {{ errorMessage }}
-            </p>
-
-          </div>
-
-        </div>
+        <app-inline-feedback
+          kind="error"
+          title="Unable to deactivate role"
+          [message]="errorMessage"
+          announcementPriority="polite" />
 
       }
 
@@ -1088,27 +1036,11 @@
         !deleting
       ) {
 
-        <div
-          class="modal-error"
-          role="alert">
-
-          <span>
-            !
-          </span>
-
-          <div>
-
-            <strong>
-              Unable to delete role
-            </strong>
-
-            <p>
-              {{ errorMessage }}
-            </p>
-
-          </div>
-
-        </div>
+        <app-inline-feedback
+          kind="error"
+          title="Unable to delete role"
+          [message]="errorMessage"
+          announcementPriority="polite" />
 
       }
 

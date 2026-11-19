@@ -21,6 +21,8 @@ import {
 } from '../models/update-attendance-request.model';
 
 import { PermissionService } from '../../../../core/auth/permission.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-edit-attendance',
@@ -29,7 +31,8 @@ import { PermissionService } from '../../../../core/auth/permission.service';
   imports: [
     CommonModule,
     FormsModule,
-    RouterLink
+    RouterLink,
+    InlineFeedbackComponent
   ],
 
   templateUrl: './edit-attendance.html',
@@ -52,6 +55,9 @@ export class EditAttendanceComponent implements OnInit {
   private readonly permissionService =
   inject(PermissionService);
 
+  private readonly feedbackService =
+  inject(ActionFeedbackService);
+
   attendanceId!: number;
 
   attendance: Attendance | null = null;
@@ -62,7 +68,7 @@ export class EditAttendanceComponent implements OnInit {
   saving = false;
 
   errorMessage = '';
-  successMessage = '';
+  mutationErrorMessage = '';
 
 ngOnInit(): void {
 
@@ -167,9 +173,14 @@ ngOnInit(): void {
 
   saveChanges(): void {
 
+    if (this.saving) {
+      return;
+    }
+
     if (!this.canEditAttendance()) {
-  this.errorMessage =
+  this.mutationErrorMessage =
     'You do not have permission to edit attendance.';
+  this.cdr.detectChanges();
   return;
 }
 
@@ -179,7 +190,7 @@ ngOnInit(): void {
 
     this.saving = true;
     this.errorMessage = '';
-    this.successMessage = '';
+    this.mutationErrorMessage = '';
 
     const request: UpdateAttendanceRequest = {
       status: this.status
@@ -195,8 +206,11 @@ ngOnInit(): void {
 
           this.saving = false;
 
-          this.successMessage =
-            'Attendance updated successfully.';
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Attendance updated successfully.',
+            persistAcrossNavigation: true
+          });
 
           this.cdr.detectChanges();
 
@@ -208,15 +222,8 @@ ngOnInit(): void {
         },
 
         error: (error) => {
-
-          console.error(
-            'Failed to update attendance:',
-            error
-          );
-
-          this.errorMessage =
-            error?.error?.message ??
-            'Failed to update attendance.';
+          this.mutationErrorMessage =
+            this.mutationMessage(error, 'Failed to update attendance.');
 
           this.saving = false;
 
@@ -230,4 +237,8 @@ ngOnInit(): void {
     'ATTENDANCE_EDIT'
   );
 }
+
+  private mutationMessage(error: any, fallback: string): string {
+    return error?.error?.message || fallback;
+  }
 }

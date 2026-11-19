@@ -208,8 +208,8 @@
   [message]="selectedAdmin?.isActive
     ? 'Are you sure you want to deactivate this admin? The admin will no longer be able to access the system.'
     : 'Are you sure you want to activate this admin? The admin will regain access to the system.'"
-  [confirmLabel]="selectedAdmin?.isActive ? 'Deactivate' : 'Activate'"
-  [cancelLabel]="'Cancel'"
+  [confirmLabel]="statusUpdating ? 'Updating...' : (selectedAdmin?.isActive ? 'Deactivate' : 'Activate')"
+  [cancelLabel]="statusUpdating ? 'Please wait...' : 'Cancel'"
   [danger]="selectedAdmin?.isActive ?? true"
   (confirmed)="confirmStatusChange()"
   (cancelled)="cancelStatusChange()">

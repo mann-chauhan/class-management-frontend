@@ -61,43 +61,11 @@
 
       @if (errorMessages.length > 0) {
 
-        <div class="error-state">
-
-          <div class="error-title">
-            Please fix the following:
-          </div>
-
-          <ul>
-
-            @for (
-              error of errorMessages;
-              track $index
-            ) {
-
-              <li>
-                {{ error }}
-              </li>
-
-            }
-
-          </ul>
-
-        </div>
-
-      }
-
-
-      <!-- ==================================================
-           SUCCESS BOX
-           ================================================== -->
-
-      @if (successMessage) {
-
-        <div class="success-state">
-
-          {{ successMessage }}
-
-        </div>
+        <app-inline-feedback
+          kind="error"
+          title="Unable to save teacher"
+          [message]="errorMessages.join(' | ')"
+          announcementPriority="polite" />
 
       }
 

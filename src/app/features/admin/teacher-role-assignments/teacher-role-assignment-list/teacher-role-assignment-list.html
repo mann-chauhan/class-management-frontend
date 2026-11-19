@@ -52,50 +52,8 @@
        ALERTS
        ===================================================== -->
 
-  @if (successMessage) {
-
-  <div class="success-banner">
-
-    <div class="alert-icon">
-      ✓
-    </div>
-
-    <div>
-      <strong>
-        Success
-      </strong>
-
-      <span>
-        {{ successMessage }}
-      </span>
-    </div>
-
-  </div>
-
-  }
-
-
-  @if (errorMessage) {
-
-  <div class="error-banner">
-
-    <div class="alert-content">
-
-      <div class="alert-icon">
-        !
-      </div>
-
-      <div>
-        <strong>
-          Something went wrong
-        </strong>
-
-        <span>
-          {{ errorMessage }}
-        </span>
-      </div>
-
-    </div>
+  @if (errorMessage && !showRemoveDialog) {
+  <app-inline-feedback kind="error" title="Teacher role assignments could not be loaded" [message]="errorMessage" announcementPriority="polite" />
 
     <button type="button" class="retry-button" (click)="loadAssignments()">
 
@@ -103,10 +61,7 @@
 
     </button>
 
-  </div>
-
   }
-
 
   <!-- =====================================================
        LOADING STATE
@@ -638,10 +593,18 @@
        REMOVE CONFIRMATION
        ===================================================== -->
 
-  <app-confirmation-dialog [visible]="showRemoveDialog" title="Remove Teacher Role Assignment?"
+  <app-confirmation-dialog [visible]="showRemoveDialog" [busy]="deleting" busyLabel="Removing..." title="Remove Teacher Role Assignment?"
     message="This will remove the assigned role and its access scopes from this teacher. This action cannot be undone."
     confirmLabel="Remove" cancelLabel="Cancel" [danger]="true" (confirmed)="confirmRemove()"
     (cancelled)="cancelRemove()">
+
+    @if (errorMessage && showRemoveDialog) {
+      <app-inline-feedback
+        kind="error"
+        title="Unable to remove assignment"
+        [message]="errorMessage"
+        announcementPriority="polite" />
+    }
 
   </app-confirmation-dialog>
 

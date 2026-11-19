@@ -38,20 +38,11 @@
 
         @if (errorMessage) {
 
-        <div class="error-state">
-            {{ errorMessage }}
-        </div>
-
-        }
-
-
-        <!-- Success -->
-
-        @if (successMessage) {
-
-        <div class="success-state">
-            {{ successMessage }}
-        </div>
+        <app-inline-feedback
+            kind="error"
+            [title]="errorTitle"
+            [message]="errorMessage"
+            announcementPriority="polite" />
 
         }
 

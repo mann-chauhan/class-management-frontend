@@ -345,57 +345,12 @@
            MESSAGES
            ================================================= -->
 
-      @if (errorMessage) {
-
-        <div
-          class="feedback-message error-message"
-          role="alert">
-
-          <span class="feedback-icon" aria-hidden="true">
-            !
-          </span>
-
-          <div>
-
-            <strong>
-              Update failed
-            </strong>
-
-            <p>
-              {{ errorMessage }}
-            </p>
-
-          </div>
-
-        </div>
-
-      }
-
-
-      @if (successMessage) {
-
-        <div
-          class="feedback-message success-message"
-          role="status">
-
-          <span class="feedback-icon" aria-hidden="true">
-            ✓
-          </span>
-
-          <div>
-
-            <strong>
-              Attendance updated
-            </strong>
-
-            <p>
-              {{ successMessage }}
-            </p>
-
-          </div>
-
-        </div>
-
+      @if (mutationErrorMessage) {
+        <app-inline-feedback
+          kind="error"
+          title="Update failed"
+          [message]="mutationErrorMessage"
+          announcementPriority="polite" />
       }
 
 

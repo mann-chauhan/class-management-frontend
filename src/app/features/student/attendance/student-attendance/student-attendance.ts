@@ -129,8 +129,7 @@ export class StudentAttendanceComponent implements OnInit {
         this.summaryLoading = false;
         this.cdr.detectChanges();
       },
-      error: (error) => {
-        console.error('Failed to load student attendance summary:', error);
+      error: () => {
         this.summary = null;
         this.summaryError = 'Unable to load attendance summary.';
         this.summaryLoading = false;
@@ -169,15 +168,10 @@ export class StudentAttendanceComponent implements OnInit {
           this.cdr.detectChanges();
         },
 
-        error: (error) => {
+        error: () => {
           if (requestId !== this.requestSequence) {
             return;
           }
-
-          console.error(
-            'Failed to load student attendance:',
-            error
-          );
 
           this.errorMessage =
             'Failed to load attendance.';

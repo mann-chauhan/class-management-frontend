@@ -257,4 +257,4 @@ env -u DB_URL -u DATABASE_URL -u SPRING_DATASOURCE_URL -u LEAVE_BROWSER_CLEANUP_
   LEAVE_BROWSER_STUDENT_EMAIL="$marker-student@test.invalid" \
   LEAVE_BROWSER_OTHER_STUDENT_EMAIL="$marker-other-student@test.invalid" \
   LEAVE_BROWSER_TEST_PASSWORD="$test_password" \
-  npm run e2e -- e2e/leave
+  npm run e2e:leave

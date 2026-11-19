@@ -19,6 +19,8 @@ import {
 
 import { TeacherStudentService } from '../../services/teacher-student.service';
 import { PermissionService } from '../../../../../core/auth/permission.service';
+import { ActionFeedbackService } from '../../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../../shared/components/inline-feedback/inline-feedback.component';
 
 import {
   TeacherStudent,
@@ -34,7 +36,8 @@ import {
 
   imports: [
     CommonModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    InlineFeedbackComponent
   ],
 
   templateUrl: './teacher-student-form.html',
@@ -61,6 +64,9 @@ export class TeacherStudentFormComponent implements OnInit {
   private readonly permissionService =
     inject(PermissionService);
 
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
+
   private readonly cdr =
     inject(ChangeDetectorRef);
 
@@ -79,15 +85,28 @@ export class TeacherStudentFormComponent implements OnInit {
   // =========================================================
 
 canViewStudent(): boolean {
-  return this.permissionService.hasAnyPermission([
-    'STUDENT_VIEW_NAME',
-    'STUDENT_VIEW_ROLL_NUMBER',
-    'STUDENT_VIEW_EMAIL',
-    'STUDENT_VIEW_PHONE',
-    'STUDENT_VIEW_ADDRESS',
-    'STUDENT_VIEW_STATUS'
-  ]);
+  return this.permissionService.hasPermission('STUDENT_VIEW_NAME');
 }
+
+  canEditName(): boolean {
+    return this.permissionService.hasPermission('STUDENT_EDIT_NAME');
+  }
+
+  canEditRollNumber(): boolean {
+    return this.permissionService.hasPermission('STUDENT_EDIT_ROLL_NUMBER');
+  }
+
+  canEditEmail(): boolean {
+    return this.permissionService.hasPermission('STUDENT_EDIT_EMAIL');
+  }
+
+  canEditPhone(): boolean {
+    return this.permissionService.hasPermission('STUDENT_EDIT_PHONE');
+  }
+
+  canEditEnrollment(): boolean {
+    return this.permissionService.hasPermission('STUDENT_EDIT_ENROLLMENT');
+  }
 
   canViewAddress(): boolean {
     return this.permissionService.hasPermission('STUDENT_VIEW_ADDRESS');
@@ -197,6 +216,14 @@ canViewStudent(): boolean {
 
   scopeOptionsError = '';
 
+  isLoadingPermissions = false;
+
+  permissionError = '';
+
+  studentLoadError = '';
+
+  private formInitialized = false;
+
 
   // =========================================================
   // STATE
@@ -210,20 +237,36 @@ canViewStudent(): boolean {
 
   errorMessages: string[] = [];
 
-  successMessage = '';
-
 
   // =========================================================
   // INIT
   // =========================================================
 
   ngOnInit(): void {
+    this.loadPermissions();
+  }
+
+  loadPermissions(): void {
+    if (this.isLoadingPermissions) {
+      return;
+    }
+
+    this.isLoadingPermissions = true;
+    this.permissionError = '';
+    this.cdr.markForCheck();
 
     this.permissionService
       .loadMyPermissions()
       .subscribe({
 
         next: () => {
+
+          this.isLoadingPermissions = false;
+
+          if (this.formInitialized) {
+            this.cdr.markForCheck();
+            return;
+          }
 
           // -------------------------------------------------
           // VIEW PERMISSION
@@ -233,6 +276,8 @@ canViewStudent(): boolean {
 
             this.errorMessage =
               'You do not have permission to view students.';
+
+            this.formInitialized = true;
 
             this.cdr.markForCheck();
 
@@ -253,6 +298,8 @@ canViewStudent(): boolean {
 
           this.initializeFormMode();
 
+          this.formInitialized = true;
+
 
           this.cdr.markForCheck();
 
@@ -266,7 +313,9 @@ canViewStudent(): boolean {
             error
           );
 
-          this.errorMessage =
+          this.isLoadingPermissions = false;
+
+          this.permissionError =
             'Unable to load your permissions. Please try again.';
 
           this.cdr.markForCheck();
@@ -275,6 +324,10 @@ canViewStudent(): boolean {
 
       });
 
+  }
+
+  retryPermissions(): void {
+    this.loadPermissions();
   }
 
 
@@ -378,20 +431,11 @@ canViewStudent(): boolean {
     // EDIT MODE
     // =======================================================
 
-    if (!this.canUpdateStudent()) {
-
-      this.errorMessage =
-        'You do not have permission to update students.';
-
-      this.cdr.markForCheck();
-
-      return;
-    }
-
-
     this.isEditMode = true;
 
     this.studentId = parsedId;
+
+    this.applyEditFieldPermissions();
 
 
     // -------------------------------------------------------
@@ -437,12 +481,47 @@ canViewStudent(): boolean {
 
   }
 
+  private applyEditFieldPermissions(): void {
+    if (!this.isEditMode) {
+      return;
+    }
+
+    const editableFields: Array<[string, boolean]> = [
+      ['name', this.canEditName()],
+      ['rollNumber', this.canEditRollNumber()],
+      ['email', this.canEditEmail()],
+      ['phone', this.canEditPhone()],
+      ['alternatePhone', this.canEditPhone()],
+      ['address', this.canEditAddress()],
+      ['academicYearId', this.canEditEnrollment()],
+      ['classId', this.canEditEnrollment()],
+      ['sectionId', this.canEditEnrollment()]
+    ];
+
+    for (const [fieldName, canEdit] of editableFields) {
+      const control = this.studentForm.get(fieldName);
+      if (!control) {
+        continue;
+      }
+
+      if (canEdit) {
+        control.enable({ emitEvent: false });
+      } else {
+        control.disable({ emitEvent: false });
+      }
+    }
+  }
+
 
   // =========================================================
   // LOAD TEACHER SCOPE OPTIONS
   // =========================================================
 
   private loadScopeOptions(): void {
+
+    if (this.isLoadingScopeOptions) {
+      return;
+    }
 
     this.isLoadingScopeOptions = true;
 
@@ -470,8 +549,6 @@ canViewStudent(): boolean {
 
           } else {
 
-            this.scopeOptions = [];
-
             this.scopeOptionsError =
               response.message ||
               'Unable to load student scope options.';
@@ -492,9 +569,6 @@ canViewStudent(): boolean {
             'Failed to load teacher student scope options:',
             error
           );
-
-
-          this.scopeOptions = [];
 
 
           const httpError =
@@ -518,6 +592,10 @@ canViewStudent(): boolean {
 
       });
 
+  }
+
+  retryScopeOptions(): void {
+    this.loadScopeOptions();
   }
 
 
@@ -754,6 +832,8 @@ canViewStudent(): boolean {
 
     this.errorMessages = [];
 
+    this.studentLoadError = '';
+
     this.cdr.markForCheck();
 
 
@@ -780,7 +860,7 @@ canViewStudent(): boolean {
 
           } else {
 
-            this.errorMessage =
+            this.studentLoadError =
               response.message ||
               'Unable to load student.';
 
@@ -811,9 +891,10 @@ canViewStudent(): boolean {
             };
 
 
-          this.errorMessage =
-            httpError?.error?.message ||
-            'Unable to load student.';
+          this.studentLoadError =
+            'Unable to load student. Please try again.';
+
+          this.errorMessage = this.studentLoadError;
 
 
           this.errorMessages =
@@ -832,6 +913,12 @@ canViewStudent(): boolean {
 
       });
 
+  }
+
+  retryStudentLoad(): void {
+    if (this.studentId !== null && !this.loading) {
+      this.loadStudent(this.studentId);
+    }
   }
 
 
@@ -1089,9 +1176,7 @@ canViewStudent(): boolean {
 
             this.saving = false;
 
-            this.errorMessage =
-              response.message ||
-              'Unable to create student.';
+            this.setSaveError('Unable to create student.');
 
             this.cdr.markForCheck();
 
@@ -1101,8 +1186,11 @@ canViewStudent(): boolean {
 
           this.saving = false;
 
-          this.successMessage =
-            'Student created successfully.';
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Student created successfully.',
+            persistAcrossNavigation: true
+          });
 
           this.cdr.markForCheck();
 
@@ -1214,9 +1302,7 @@ canViewStudent(): boolean {
 
             this.saving = false;
 
-            this.errorMessage =
-              response.message ||
-              'Unable to update student.';
+            this.setSaveError('Unable to update student.');
 
             this.cdr.markForCheck();
 
@@ -1226,8 +1312,11 @@ canViewStudent(): boolean {
 
           this.saving = false;
 
-          this.successMessage =
-            'Student updated successfully.';
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Student updated successfully.',
+            persistAcrossNavigation: true
+          });
 
           this.cdr.markForCheck();
 
@@ -1284,37 +1373,15 @@ canViewStudent(): boolean {
     error: unknown,
     fallbackMessage: string
   ): void {
+    void error;
+    this.setSaveError(fallbackMessage);
 
-    const httpError =
-      error as {
-        error?: {
-          message?: string;
-          errors?: string[];
-        };
-      };
+  }
 
-
-    const backendMessage =
-      httpError?.error?.message;
-
-
-    const backendErrors =
-      httpError?.error?.errors;
-
-
-    this.errorMessages =
-      Array.isArray(backendErrors)
-        ? backendErrors
-        : [];
-
-
-    this.errorMessage =
-      backendMessage ||
-      fallbackMessage;
-
-
+  private setSaveError(message: string): void {
+    this.errorMessages = [message];
+    this.errorMessage = message;
     this.saving = false;
-
     this.cdr.markForCheck();
 
   }
@@ -1329,8 +1396,6 @@ canViewStudent(): boolean {
     this.errorMessages = [];
 
     this.errorMessage = '';
-
-    this.successMessage = '';
 
   }
 

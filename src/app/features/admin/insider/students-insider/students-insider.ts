@@ -29,6 +29,8 @@ import * as XLSX from 'xlsx';
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 // =============================================================
 // REPORT ROW
 // =============================================================
@@ -94,6 +96,7 @@ interface ColumnDefinition {
         FormsModule,
         DecimalPipe,
         BaseChartDirective
+        ,InlineFeedbackComponent
     ],
 
     templateUrl: './students-insider.html',
@@ -129,6 +132,8 @@ export class StudentsInsider implements OnInit {
 
     private readonly sectionService =
         inject(SectionService);
+
+    private readonly feedbackService = inject(ActionFeedbackService);
 
 
     // =========================================================
@@ -3987,9 +3992,7 @@ export class StudentsInsider implements OnInit {
 
         if (visibleColumns.length === 0) {
 
-            alert(
-                'Please select at least one column to export.'
-            );
+            this.feedbackService.show({ kind: 'warning', message: 'Please select at least one column to export.' });
 
             return;
 
@@ -4000,9 +4003,7 @@ export class StudentsInsider implements OnInit {
             this.reportFilteredRows.length === 0
         ) {
 
-            alert(
-                'There are no students to export.'
-            );
+            this.feedbackService.show({ kind: 'info', message: 'There are no students to export.' });
 
             return;
 
@@ -4102,9 +4103,7 @@ export class StudentsInsider implements OnInit {
 
         if (visibleColumns.length === 0) {
 
-            alert(
-                'Please select at least one column to export.'
-            );
+            this.feedbackService.show({ kind: 'warning', message: 'Please select at least one column to export.' });
 
             return;
 
@@ -4115,9 +4114,7 @@ export class StudentsInsider implements OnInit {
             this.reportFilteredRows.length === 0
         ) {
 
-            alert(
-                'There are no students to export.'
-            );
+            this.feedbackService.show({ kind: 'info', message: 'There are no students to export.' });
 
             return;
 

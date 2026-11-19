@@ -8,6 +8,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 import { AdvertisementService } from '../services/advertisement.service';
 import {
@@ -18,7 +20,7 @@ import {
 @Component({
   selector: 'app-advertisement-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, InlineFeedbackComponent],
   templateUrl: './advertisement-settings.html',
   styleUrl: './advertisement-settings.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -30,12 +32,13 @@ export class AdvertisementSettingsComponent implements OnInit {
   readonly maximumTransitionDurationMs = 2000;
   private readonly service = inject(AdvertisementService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   settings: AdvertisementSettings | null = null;
   loading = false;
   saving = false;
   errorMessage = '';
-  successMessage = '';
+  saveErrorMessage = '';
   timingValidationError = '';
   defaultRotationIntervalSeconds = 5;
   transitionDurationMs = 500;
@@ -51,7 +54,7 @@ export class AdvertisementSettingsComponent implements OnInit {
 
     this.loading = true;
     this.errorMessage = '';
-    this.successMessage = '';
+    this.saveErrorMessage = '';
     this.timingValidationError = '';
     this.settings = null;
     this.cdr.markForCheck();
@@ -93,7 +96,7 @@ export class AdvertisementSettingsComponent implements OnInit {
 
     this.saving = true;
     this.errorMessage = '';
-    this.successMessage = '';
+    this.saveErrorMessage = '';
 
     const request: AdvertisementSettingsRequest = {
       teacherSectionEnabled: this.settings.teacherSectionEnabled,
@@ -106,7 +109,7 @@ export class AdvertisementSettingsComponent implements OnInit {
     this.service.updateSettings(request).subscribe({
       next: response => {
         if (!response?.data) {
-          this.errorMessage = 'Advertisement settings could not be saved.';
+          this.saveErrorMessage = 'Advertisement settings could not be saved.';
         } else {
           this.settings = response.data;
           this.defaultRotationIntervalSeconds = this.toSafeRotationSeconds(
@@ -115,14 +118,17 @@ export class AdvertisementSettingsComponent implements OnInit {
           this.transitionDurationMs = this.toSafeTransitionDuration(
             response.data.transitionDurationMs
           );
-          this.successMessage = 'Advertisement settings saved successfully.';
+          this.feedbackService.show({
+            kind: 'success',
+            message: response.message || 'Advertisement settings saved successfully.'
+          });
         }
         this.saving = false;
         this.cdr.markForCheck();
       },
       error: error => {
         this.saving = false;
-        this.errorMessage = error?.error?.message || 'Could not save advertisement settings.';
+        this.saveErrorMessage = error?.error?.message || 'Could not save advertisement settings.';
         this.cdr.markForCheck();
       }
     });

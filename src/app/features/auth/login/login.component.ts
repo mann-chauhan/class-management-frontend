@@ -4,13 +4,15 @@ import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { AuthStateService } from '../../../core/auth/auth-state.service';
 import { TokenService } from '../../../core/auth/token.service';
 import { LoginResponse } from '../models/login-response.model';
+import { InlineFeedbackComponent } from '../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, InlineFeedbackComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
@@ -27,6 +29,7 @@ export class LoginComponent {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly authStateService: AuthStateService,
     private readonly tokenService: TokenService,
     private readonly router: Router,
     private readonly ngZone: NgZone,
@@ -72,6 +75,8 @@ export class LoginComponent {
             }
 
             const role = this.tokenService.getRole();
+
+            this.authStateService.startSession();
 
 
             switch (role) {

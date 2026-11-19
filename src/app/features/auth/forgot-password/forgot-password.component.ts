@@ -8,11 +8,12 @@ import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { InlineFeedbackComponent } from '../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-forgot-password',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, InlineFeedbackComponent],
   templateUrl: './forgot-password.component.html',
   styleUrl: './forgot-password.component.scss',
 })
@@ -68,11 +69,6 @@ export class ForgotPasswordComponent {
         error: (error: HttpErrorResponse) => {
 
           this.ngZone.run(() => {
-
-            console.error(
-              'Forgot password request failed:',
-              error
-            );
 
             this.isLoading = false;
 

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
 
 import {
   DataTableComponent,
@@ -11,6 +12,7 @@ import {
 import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 import {
   School,
@@ -32,7 +34,8 @@ import { SchoolService } from './services/school.service';
     DataTableComponent,
     SearchInputComponent,
     PageHeaderComponent,
-    ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    InlineFeedbackComponent
   ],
   templateUrl: './school.html',
   styleUrl: './school.scss'
@@ -41,6 +44,7 @@ export class SchoolComponent implements OnInit {
 
   private readonly schoolService = inject(SchoolService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   /* TABLE CONFIG */
 
@@ -79,7 +83,10 @@ export class SchoolComponent implements OnInit {
 
   saving = false;
 
-  errorMessage = '';
+  deleting = false;
+  loadError = '';
+  formError = '';
+  deleteError = '';
 
   /* DELETE CONFIRMATION */
 
@@ -115,12 +122,13 @@ export class SchoolComponent implements OnInit {
   loadSchools(): void {
 
     this.loading = true;
-    this.errorMessage = '';
+    this.loadError = '';
 
     this.schoolService.getAll().subscribe({
       next: (response) => {
 
         this.schools = response.data.content;
+        this.loadError = '';
 
         this.loading = false;
 
@@ -129,9 +137,7 @@ export class SchoolComponent implements OnInit {
 
       error: (error) => {
 
-        console.error(error);
-
-        this.errorMessage =
+        this.loadError =
           error?.error?.message || 'Failed to load schools.';
 
         this.loading = false;
@@ -323,6 +329,7 @@ get filteredSchools(): School[] {
       status: 'ACTIVE'
     };
 
+    this.formError = '';
     this.showForm = true;
   }
 
@@ -339,10 +346,13 @@ get filteredSchools(): School[] {
       status: school.isActive ? 'ACTIVE' : 'INACTIVE'
     };
 
+    this.formError = '';
     this.showForm = true;
   }
 
   closeForm(): void {
+
+    if (this.saving) return;
 
     this.showForm = false;
 
@@ -353,11 +363,15 @@ get filteredSchools(): School[] {
 
   saveSchool(): void {
 
+    if (this.saving) return;
+
     if (!this.form.name.trim()) {
+      this.formError = 'School name is required.';
       return;
     }
 
     this.saving = true;
+    this.formError = '';
 
     if (this.editingSchool) {
 
@@ -377,7 +391,10 @@ get filteredSchools(): School[] {
           next: () => {
 
             this.saving = false;
-
+            this.feedbackService.show({
+              kind: 'success',
+              message: 'School updated successfully.'
+            });
             this.closeForm();
 
             this.loadSchools();
@@ -385,9 +402,7 @@ get filteredSchools(): School[] {
 
           error: (error) => {
 
-            console.error(error);
-
-            this.errorMessage =
+            this.formError =
               error?.error?.message ||
               'Failed to update school.';
 
@@ -413,6 +428,10 @@ get filteredSchools(): School[] {
       next: () => {
 
         this.saving = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: 'School created successfully.'
+        });
 
         this.closeForm();
 
@@ -421,9 +440,7 @@ get filteredSchools(): School[] {
 
       error: (error) => {
 
-        console.error(error);
-
-        this.errorMessage =
+        this.formError =
           error?.error?.message ||
           'Failed to create school.';
 
@@ -439,6 +456,7 @@ get filteredSchools(): School[] {
   deleteSchool(school: School): void {
 
     this.schoolToDelete = school;
+    this.deleteError = '';
 
     this.showDeleteDialog = true;
 
@@ -447,9 +465,12 @@ get filteredSchools(): School[] {
 
   cancelDeleteSchool(): void {
 
+    if (this.deleting) return;
+
     this.showDeleteDialog = false;
 
     this.schoolToDelete = null;
+    this.deleteError = '';
 
     this.cdr.markForCheck();
   }
@@ -458,27 +479,32 @@ get filteredSchools(): School[] {
 
     const school = this.schoolToDelete;
 
-    if (!school) {
+    if (!school || this.deleting) {
       return;
     }
 
-    this.showDeleteDialog = false;
-
-    this.schoolToDelete = null;
+    this.deleting = true;
+    this.deleteError = '';
 
     this.schoolService.delete(school.id).subscribe({
 
       next: () => {
+        this.deleting = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: 'School deleted successfully.'
+        });
+        this.cancelDeleteSchool();
         this.loadSchools();
       },
 
       error: (error) => {
 
-        console.error(error);
-
-        this.errorMessage =
+        this.deleteError =
           error?.error?.message ||
           'Failed to delete school.';
+
+        this.deleting = false;
 
         this.cdr.markForCheck();
       }

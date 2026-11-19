@@ -35,10 +35,27 @@
 
   </div>
 
-  @if (errorMessage) {
-  <div class="error-box">
-    <span>{{ errorMessage }}</span>
-    <button type="button" (click)="loadStudents()">Retry</button>
+  @if (permissionError) {
+  <div class="feedback-with-action">
+    <app-inline-feedback kind="error" title="Unable to verify permissions" [message]="permissionError"
+      announcementPriority="polite"></app-inline-feedback>
+    <button type="button" (click)="retryPermissions()">Retry permissions</button>
+  </div>
+  }
+
+  @if (studentListError) {
+  <div class="feedback-with-action">
+    <app-inline-feedback kind="error" title="Unable to load students" [message]="studentListError"
+      announcementPriority="polite"></app-inline-feedback>
+    <button type="button" (click)="loadStudents()">Retry students</button>
+  </div>
+  }
+
+  @if (scopeOptionsError) {
+  <div class="feedback-with-action">
+    <app-inline-feedback kind="error" title="Unable to load scope options" [message]="scopeOptionsError"
+      announcementPriority="polite"></app-inline-feedback>
+    <button type="button" (click)="retryScopeOptions()">Retry scope options</button>
   </div>
   }
 
@@ -56,9 +73,15 @@
       }
     </div>
 
-    @if (isLoading) {
+    @if (isLoadingPermissions) {
+    <app-loading message="Loading permissions..."></app-loading>
+    } @else if (permissionError) {
+    <p class="state-message">Student data is unavailable until permissions are loaded.</p>
+    } @else if (isLoading) {
     <app-loading message="Loading students..."></app-loading>
-    } @else if (!errorMessage && students.length === 0) {
+    } @else if (studentListError && students.length === 0) {
+    <p class="state-message">No student data is available yet.</p>
+    } @else if (!studentListError && students.length === 0) {
     <app-empty-state title="No students found" description="There are no students available in your assigned scope."
       [showAction]="!!searchTerm" actionLabel="Clear Search" (actionClick)="clearSearch()"></app-empty-state>
     } @else {
@@ -207,6 +230,12 @@
 
     @if (isLoadingStudent) {
     <app-loading message="Loading student details..."></app-loading>
+    } @else if (studentDetailError) {
+    <div class="feedback-with-action">
+      <app-inline-feedback kind="error" title="Unable to load student details" [message]="studentDetailError"
+        announcementPriority="polite"></app-inline-feedback>
+      <button type="button" (click)="retryStudentDetails()">Retry details</button>
+    </div>
     } @else if (selectedStudent) {
     <div class="drawer-content">
       <div class="profile">
@@ -288,6 +317,11 @@
 }
 
 <app-confirmation-dialog [visible]="showConfirmationDialog" [title]="confirmationTitle" [message]="confirmationMessage"
-  [confirmLabel]="confirmationConfirmLabel" [danger]="pendingAction === 'delete'" (confirmed)="confirmAction()"
+  [confirmLabel]="confirmationConfirmLabel" [danger]="pendingAction === 'delete'" [busy]="confirmationBusy"
+  [busyLabel]="pendingAction === 'delete' ? 'Deleting...' : 'Updating...'" (confirmed)="confirmAction()"
   (cancelled)="cancelConfirmation()">
+  @if (confirmationError) {
+  <app-inline-feedback kind="error" title="Action failed" [message]="confirmationError"
+    announcementPriority="polite"></app-inline-feedback>
+  }
 </app-confirmation-dialog>

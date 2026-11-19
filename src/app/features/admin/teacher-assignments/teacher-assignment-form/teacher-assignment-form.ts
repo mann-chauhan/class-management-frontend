@@ -28,11 +28,13 @@ import {
   TeacherAssignment,
   TeacherAssignmentRequest
 } from '../models/teacher-assignment.model';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-teacher-assignment-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, InlineFeedbackComponent],
   templateUrl: './teacher-assignment-form.html',
   styleUrl: './teacher-assignment-form.scss'
 })
@@ -48,6 +50,7 @@ export class TeacherAssignmentForm implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   isEditMode = false;
   assignmentId: number | null = null;
@@ -68,7 +71,6 @@ export class TeacherAssignmentForm implements OnInit {
   saving = false;
 
   errorMessage = '';
-  successMessage = '';
 
   ngOnInit(): void {
     this.assignmentId = Number(this.route.snapshot.paramMap.get('id'));
@@ -230,8 +232,11 @@ export class TeacherAssignmentForm implements OnInit {
   }
 
   save(): void {
+    if (this.saving) {
+      return;
+    }
+
     this.errorMessage = '';
-    this.successMessage = '';
 
     if (!this.isFormValid()) {
       return;
@@ -254,11 +259,14 @@ export class TeacherAssignmentForm implements OnInit {
     request$.subscribe({
       next: response => {
         this.saving = false;
-        this.successMessage =
-          response.message ||
-          (this.isEditMode
-            ? 'Teacher assignment updated successfully.'
-            : 'Teacher assignment created successfully.');
+        this.feedbackService.show({
+          kind: 'success',
+          message: response.message ||
+            (this.isEditMode
+              ? 'Teacher assignment updated successfully.'
+              : 'Teacher assignment created successfully.'),
+          persistAcrossNavigation: true
+        });
 
         this.cdr.detectChanges();
 
@@ -267,8 +275,6 @@ export class TeacherAssignmentForm implements OnInit {
         }, 700);
       },
       error: error => {
-        console.error('Failed to save teacher assignment:', error);
-
         this.saving = false;
         this.errorMessage =
           error?.error?.message ||

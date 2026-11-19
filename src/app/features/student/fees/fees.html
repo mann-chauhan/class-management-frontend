@@ -68,20 +68,12 @@
   @else if (errorMessage) {
 
     <div class="state-card error">
-
-      <div class="state-icon error-icon">
-        !
-      </div>
-
-      <div>
-        <h3>
-          Unable to load fees
-        </h3>
-
-        <p>
-          {{ errorMessage }}
-        </p>
-      </div>
+        <app-inline-feedback
+          kind="error"
+          title="Fees could not be loaded"
+          [message]="errorMessage"
+        />
+        <button type="button" (click)="retryFeeList()">Retry loading fees</button>
 
     </div>
 
@@ -416,6 +408,15 @@
 
         }
 
+        @else if (paymentsError) {
+          <app-inline-feedback
+            kind="error"
+            title="Payment history could not be loaded"
+            [message]="paymentsError"
+          />
+          <button type="button" (click)="retryPayments()">Retry payment history</button>
+        }
+
 
         <!-- No Payments -->
 
@@ -669,6 +670,15 @@
 
           </div>
 
+        }
+
+        @else if (receiptError) {
+          <app-inline-feedback
+            kind="error"
+            title="Receipt could not be loaded"
+            [message]="receiptError"
+          />
+          <button type="button" (click)="retryReceipt()">Retry receipt</button>
         }
 
 
@@ -1104,12 +1114,22 @@
 
           <div class="receipt-modal-footer">
 
+            @if (receiptDownloadError) {
+              <app-inline-feedback
+                kind="error"
+                title="Receipt download failed"
+                [message]="receiptDownloadError"
+              />
+              <button type="button" (click)="retryReceiptDownload()">Retry download</button>
+            }
+
             <button
               type="button"
               class="download-button"
+              [disabled]="downloadingReceiptId === receipt.id"
               (click)="downloadReceipt()">
 
-              Download PDF
+              {{ downloadingReceiptId === receipt.id ? 'Downloading…' : 'Download PDF' }}
 
             </button>
 

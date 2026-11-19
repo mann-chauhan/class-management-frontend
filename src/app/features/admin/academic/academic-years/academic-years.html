@@ -32,10 +32,11 @@
 
   <!-- ERROR -->
   @if (errorMessage) {
-
-    <div class="error-state">
-      <span>{{ errorMessage }}</span>
-    </div>
+    <app-inline-feedback
+      kind="error"
+      title="Academic year action failed"
+      [message]="errorMessage"
+      announcementPriority="polite" />
 
   }
 
@@ -177,7 +178,7 @@
             <button
               type="submit"
               class="btn-primary"
-              [disabled]="academicYearForm.invalid">
+              [disabled]="academicYearForm.invalid || saving">
 
               {{ editingYear ? 'Update' : 'Save' }}
 

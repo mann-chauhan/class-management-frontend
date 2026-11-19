@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { AcademicYearService } from '../../academic/academic-years/services/academic-year.service';
 import { BoardMediumService } from '../../academic/board-media/services/board-medium.service';
@@ -11,6 +11,7 @@ import { SectionService } from '../../academic/classes/section.service';
 import { FeeStructureService } from '../../fees/services/fee-structure.service';
 import { StudentService } from '../services/student.service';
 import { StudentForm } from './student-form';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
 
 describe('StudentForm initial school performance', () => {
   let fixture: ComponentFixture<StudentForm>;
@@ -23,6 +24,7 @@ describe('StudentForm initial school performance', () => {
     getAll: ReturnType<typeof vi.fn>;
     getActiveSchools: ReturnType<typeof vi.fn>;
   };
+  let feedbackService: { show: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     studentService = {
@@ -35,6 +37,7 @@ describe('StudentForm initial school performance', () => {
         data: { content: [], totalPages: 0 }
       }))
     };
+    feedbackService = { show: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [StudentForm],
@@ -54,7 +57,8 @@ describe('StudentForm initial school performance', () => {
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: vi.fn(() => null) } } }
-        }
+        },
+        { provide: ActionFeedbackService, useValue: feedbackService }
       ]
     }).compileComponents();
 
@@ -126,12 +130,42 @@ describe('StudentForm initial school performance', () => {
     component.ngOnInit();
     component.studentForm.get('schoolId')?.setValue(4);
     component.addInitialPerformanceRecord();
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
-
     component.studentForm.get('schoolId')?.setValue(5);
+    expect(component.schoolChangeDialogOpen).toBe(true);
+    component.cancelSchoolChange();
 
     expect(component.studentForm.get('schoolId')?.value).toBe(4);
-    vi.restoreAllMocks();
+  });
+
+  it('renders contextual school-change confirmation controls and keeps the previous selection pending confirmation', () => {
+    component.popupMode = true;
+    component.ngOnInit();
+    component.studentForm.get('schoolId')?.setValue(4);
+    component.addInitialPerformanceRecord();
+    component.studentForm.get('schoolId')?.setValue(5);
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog).toBeTruthy();
+    expect(dialog.textContent).toContain('Change student school?');
+    expect(dialog.textContent).toContain('pending initial exam records');
+    expect(dialog.querySelector('.confirm-button')).toBeTruthy();
+    expect(dialog.querySelector('.cancel-button')).toBeTruthy();
+    expect(component.studentForm.get('schoolId')?.value).toBe(4);
+  });
+
+  it('reopens cleanly after cancelling a school-change confirmation', () => {
+    component.popupMode = true;
+    component.ngOnInit();
+    component.studentForm.get('schoolId')?.setValue(4);
+    component.addInitialPerformanceRecord();
+    component.studentForm.get('schoolId')?.setValue(5);
+    component.cancelSchoolChange();
+    component.studentForm.get('schoolId')?.setValue(6);
+
+    expect(component.schoolChangeDialogOpen).toBe(true);
+    expect(component.pendingSchoolId).toBe(6);
+    expect(component.initialPerformanceRecords.length).toBe(1);
   });
 
   it('accepts a confirmed school change for all pending records', () => {
@@ -140,12 +174,10 @@ describe('StudentForm initial school performance', () => {
     component.studentForm.get('schoolId')?.setValue(4);
     component.addInitialPerformanceRecord();
     component.addInitialPerformanceRecord();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-
     component.studentForm.get('schoolId')?.setValue(5);
+    component.confirmSchoolChange();
 
     expect(component.studentForm.get('schoolId')?.value).toBe(5);
-    vi.restoreAllMocks();
   });
 
   it('removes a record before submission', () => {
@@ -214,6 +246,93 @@ describe('StudentForm initial school performance', () => {
 
     const request = studentService.updateStudent.mock.calls[0][1];
     expect(request).not.toHaveProperty('schoolPerformanceRecords');
+  });
+
+  it('emits one non-persistent success feedback for popup create', () => {
+    fillValidCreateForm();
+
+    component.onSubmit();
+
+    expect(feedbackService.show).toHaveBeenCalledTimes(1);
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: 'Student created successfully.',
+      persistAcrossNavigation: false
+    });
+  });
+
+  it('shows persistent success feedback for standalone update', () => {
+    component.popupMode = false;
+    component.isEditMode = true;
+    component.studentId = 21;
+    (component as unknown as { loadEditFormState: () => void }).loadEditFormState();
+    component.studentForm.patchValue({
+      rollNumber: '26S001',
+      name: 'Student',
+      email: 'student@example.com',
+      academicYearId: 1,
+      classId: 2,
+      sectionId: 3
+    });
+
+    component.onSubmit();
+
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: 'Student updated successfully.',
+      persistAcrossNavigation: true
+    });
+  });
+
+  it('prevents duplicate submissions while the create request is pending', () => {
+    const pending = new Subject<unknown>();
+    studentService.createStudent.mockReturnValue(pending.asObservable());
+    fillValidCreateForm();
+
+    component.onSubmit();
+    component.onSubmit();
+
+    expect(studentService.createStudent).toHaveBeenCalledTimes(1);
+    pending.error({ error: { details: { password: 'secret' } } });
+    expect(component.errorMessages).toEqual(['Failed to create student.']);
+    expect(component.errorMessages.join(' ')).not.toContain('secret');
+  });
+
+  it('preserves values and uses inline feedback after update failure', () => {
+    component.isEditMode = true;
+    component.studentId = 21;
+    (component as unknown as { loadEditFormState: () => void }).loadEditFormState();
+    component.studentForm.patchValue({ name: 'Updated Student', rollNumber: '26S001', email: 'student@example.com', academicYearId: 1, classId: 2, sectionId: 3 });
+    studentService.updateStudent.mockReturnValue(throwError(() => ({ error: { details: { password: 'secret' } } })));
+
+    component.onSubmit();
+
+    expect(component.studentForm.get('name')?.value).toBe('Updated Student');
+    expect(component.errorMessage).toBe('Failed to update student.');
+    expect(component.saving).toBe(false);
+    expect(feedbackService.show).not.toHaveBeenCalled();
+  });
+
+  it('prevents duplicate update submissions', () => {
+    const pending = new Subject<unknown>();
+    component.isEditMode = true;
+    component.studentId = 21;
+    (component as unknown as { loadEditFormState: () => void }).loadEditFormState();
+    component.studentForm.patchValue({ name: 'Updated Student', rollNumber: '26S001', email: 'student@example.com', academicYearId: 1, classId: 2, sectionId: 3 });
+    studentService.updateStudent.mockReturnValue(pending.asObservable());
+
+    component.onSubmit();
+    component.onSubmit();
+
+    expect(studentService.updateStudent).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps validation errors local and does not submit an invalid form', () => {
+    component.onSubmit();
+
+    expect(studentService.createStudent).not.toHaveBeenCalled();
+    expect(component.errorMessages.length).toBeGreaterThan(0);
+    expect(feedbackService.show).not.toHaveBeenCalled();
   });
 
   function fillValidCreateForm(): void {

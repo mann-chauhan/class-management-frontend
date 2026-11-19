@@ -45,10 +45,11 @@
   }
 
   @if (errorMessage && !showForm) {
-
-    <div class="error-state">
-      {{ errorMessage }}
-    </div>
+    <app-inline-feedback
+      kind="error"
+      title="Class or section action failed"
+      [message]="errorMessage"
+      announcementPriority="polite" />
 
   }
 

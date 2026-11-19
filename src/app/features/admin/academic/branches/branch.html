@@ -9,19 +9,12 @@
     (actionClick)="openCreateForm()"
   />
 
-  <div *ngIf="successMessage" class="alert alert-success" role="status">
-    {{ successMessage }}
-    <button type="button" class="alert-close" (click)="successMessage = ''">
-      &times;
-    </button>
-  </div>
-
-  <div *ngIf="errorMessage && !showForm" class="alert alert-error" role="alert">
-    {{ errorMessage }}
-    <button type="button" class="alert-close" (click)="errorMessage = ''">
-      &times;
-    </button>
-  </div>
+  <app-inline-feedback
+    *ngIf="loadError && branches.length > 0"
+    kind="error"
+    title="Branches could not be loaded"
+    [message]="loadError"
+  />
 
   <div class="branch-toolbar">
     <app-search-input
@@ -41,18 +34,32 @@
     </select>
   </div>
 
-  <app-data-table
-    [columns]="columns"
-    [data]="filteredBranches"
-    [loading]="loading"
-    [actions]="actions"
-    [showActions]="true"
-    [enablePagination]="true"
-    [pageSize]="50"
-    (actionClick)="onTableAction($event)"
-  />
+  <ng-container *ngIf="loadError && branches.length === 0; else branchTable">
+    <div class="empty-state">
+      <app-inline-feedback
+        kind="error"
+        title="Branches could not be loaded"
+        [message]="loadError"
+      />
+      <button type="button" class="btn btn-secondary" (click)="loadBranches()">
+        Retry
+      </button>
+    </div>
+  </ng-container>
+  <ng-template #branchTable>
+    <app-data-table
+      [columns]="columns"
+      [data]="filteredBranches"
+      [loading]="loading"
+      [actions]="actions"
+      [showActions]="true"
+      [enablePagination]="true"
+      [pageSize]="50"
+      (actionClick)="onTableAction($event)"
+    />
+  </ng-template>
 
-  <div *ngIf="!loading && !filteredBranches.length" class="empty-state">
+  <div *ngIf="!loading && !loadError && !filteredBranches.length" class="empty-state">
     <h3>No branches found</h3>
     <p>Try changing your search or create a new branch.</p>
   </div>
@@ -131,9 +138,12 @@
           <small class="field-hint">Status changes through the Deactivate action in the branch list.</small>
         </div>
 
-        <div *ngIf="showForm && errorMessage" class="alert alert-error">
-          {{ errorMessage }}
-        </div>
+        <app-inline-feedback
+          *ngIf="formError"
+          kind="error"
+          title="Branch could not be saved"
+          [message]="formError"
+        />
 
         <footer class="modal-actions">
           <button
@@ -164,7 +174,16 @@
     confirmLabel="Deactivate"
     cancelLabel="Cancel"
     [danger]="true"
+    [busy]="deleting"
+    busyLabel="Deactivating..."
     (confirmed)="confirmDeactivate()"
     (cancelled)="cancelDeactivate()"
-  />
+  >
+    <app-inline-feedback
+      *ngIf="deactivationError"
+      kind="error"
+      title="Branch could not be deactivated"
+      [message]="deactivationError"
+    />
+  </app-confirmation-dialog>
 </section>

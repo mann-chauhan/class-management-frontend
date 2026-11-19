@@ -8,6 +8,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 import {
   AssignmentRequest
 } from '../../../admin/assignments/models/assignment.model';
@@ -22,7 +24,8 @@ import {
 
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    InlineFeedbackComponent
   ],
 
   templateUrl: './teacher-assignment-form.html',
@@ -42,6 +45,8 @@ export class TeacherAssignmentForm implements OnInit {
   private readonly cdr =
     inject(ChangeDetectorRef);
 
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
   // =========================================================
   // MODE
@@ -108,9 +113,15 @@ export class TeacherAssignmentForm implements OnInit {
 
   saving = false;
 
-  errorMessage = '';
+  loadingErrorMessage = '';
+
+  saveErrorMessage = '';
 
   successMessage = '';
+
+  get errorMessage(): string {
+    return this.saveErrorMessage || this.loadingErrorMessage;
+  }
 
 
   // =========================================================
@@ -124,7 +135,7 @@ export class TeacherAssignmentForm implements OnInit {
 
     if (!id) {
 
-      this.errorMessage =
+      this.loadingErrorMessage =
         'Assignment ID is missing.';
 
       return;
@@ -145,9 +156,13 @@ export class TeacherAssignmentForm implements OnInit {
 
   loadAssignment(id: number): void {
 
+    if (this.loading) {
+      return;
+    }
+
     this.loading = true;
 
-    this.errorMessage = '';
+    this.loadingErrorMessage = '';
 
     this.teacherAssignmentService
       .getMyAssignment(id)
@@ -229,16 +244,9 @@ export class TeacherAssignmentForm implements OnInit {
 
 
         error: (error) => {
-
-          console.error(
-            'Failed to load assignment:',
-            error
-          );
-
           this.loading = false;
 
-          this.errorMessage =
-            error?.error?.message ||
+          this.loadingErrorMessage =
             'Failed to load assignment.';
 
           this.cdr.markForCheck();
@@ -275,8 +283,9 @@ export class TeacherAssignmentForm implements OnInit {
 
     if (!this.form.title.trim()) {
 
-      this.errorMessage =
+      this.saveErrorMessage =
         'Assignment title is required.';
+      this.cdr.markForCheck();
 
       return false;
     }
@@ -284,8 +293,9 @@ export class TeacherAssignmentForm implements OnInit {
 
     if (!this.form.dueDate) {
 
-      this.errorMessage =
+      this.saveErrorMessage =
         'Due date is required.';
+      this.cdr.markForCheck();
 
       return false;
     }
@@ -296,8 +306,9 @@ export class TeacherAssignmentForm implements OnInit {
       this.form.maxMarks <= 0
     ) {
 
-      this.errorMessage =
+      this.saveErrorMessage =
         'Maximum marks must be greater than 0.';
+      this.cdr.markForCheck();
 
       return false;
     }
@@ -313,14 +324,18 @@ export class TeacherAssignmentForm implements OnInit {
 
   saveAssignment(): void {
 
-    this.errorMessage = '';
+    if (this.saving) {
+      return;
+    }
+
+    this.saveErrorMessage = '';
 
     this.successMessage = '';
 
 
     if (!this.assignmentId) {
 
-      this.errorMessage =
+      this.saveErrorMessage =
         'Assignment ID is missing.';
 
       return;
@@ -384,6 +399,12 @@ export class TeacherAssignmentForm implements OnInit {
           this.successMessage =
             'Assignment updated successfully.';
 
+          this.feedbackService.show({
+            kind: 'success',
+            message: this.successMessage,
+            persistAcrossNavigation: true
+          });
+
           this.cdr.markForCheck();
 
 
@@ -398,22 +419,24 @@ export class TeacherAssignmentForm implements OnInit {
 
 
         error: (error) => {
-
-          console.error(
-            'Failed to update assignment:',
-            error
-          );
-
           this.saving = false;
 
-          this.errorMessage =
-            error?.error?.message ||
+          this.saveErrorMessage =
             'Failed to update assignment.';
 
           this.cdr.markForCheck();
         }
 
       });
+  }
+
+  retryLoading(): void {
+
+    if (this.loading || this.assignmentId === null) {
+      return;
+    }
+
+    this.loadAssignment(this.assignmentId);
   }
 
 

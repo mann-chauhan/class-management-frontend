@@ -44,6 +44,24 @@ export interface StudentSchoolPerformancePage {
   size: number;
 }
 
+export type StudentSchoolPerformanceSortField =
+  | 'examDate'
+  | 'examName'
+  | 'maximumMarks'
+  | 'obtainedMarks'
+  | 'schoolName'
+  | 'createdAt'
+  | 'updatedAt';
+
+export type StudentSchoolPerformanceSortDirection = 'asc' | 'desc';
+
+export interface StudentSchoolPerformanceListOptions {
+  search?: string;
+  schoolId?: number | null;
+  sortBy?: StudentSchoolPerformanceSortField;
+  sortDirection?: StudentSchoolPerformanceSortDirection;
+}
+
 export interface StudentSchoolPerformanceApiResponse<T> {
   success: boolean;
   message: string;

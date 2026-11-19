@@ -12,6 +12,7 @@ import { ProfileComponent } from '../../features/profile/profile/profile';
 
 import { TokenService } from '../../core/auth/token.service';
 import { AuthStateService } from '../../core/auth/auth-state.service';
+import { PermissionService } from '../../core/auth/permission.service';
 
 import {
   NAVIGATION_CONFIG,
@@ -65,6 +66,7 @@ export class AppLayoutComponent implements OnDestroy {
   userRole = 'User';
   userInitial = 'U';
   private notificationPollingSubscription?: Subscription;
+  private permissionStateSubscription?: Subscription;
 
 private readonly notificationPollingInterval = 30_000;
 
@@ -101,6 +103,7 @@ private readonly notificationPollingInterval = 30_000;
   private readonly tokenService: TokenService,
   private readonly router: Router,
   private readonly authStateService: AuthStateService,
+  private readonly permissionService: PermissionService,
   private readonly studentOverviewWizardState: StudentOverviewWizardStateService,
   private readonly notificationService: NotificationService,
   private readonly ngZone: NgZone,
@@ -156,12 +159,51 @@ private readonly notificationPollingInterval = 30_000;
   const role = this.tokenService.getRole();
 
   if (!role) {
+    this.permissionStateSubscription?.unsubscribe();
+    this.permissionStateSubscription = undefined;
     this.navigationSections = [];
     return;
   }
 
-  this.navigationSections = NAVIGATION_CONFIG[role] ?? [];
+  if (role !== 'TEACHER') {
+    this.permissionStateSubscription?.unsubscribe();
+    this.permissionStateSubscription = undefined;
+    this.navigationSections = NAVIGATION_CONFIG[role] ?? [];
+    return;
+  }
+
+  this.permissionStateSubscription?.unsubscribe();
+  this.permissionStateSubscription = this.permissionService.state$.subscribe(() => {
+    this.updateNavigation(role);
+    this.cdr.markForCheck();
+  });
+
+  this.updateNavigation(role);
+
+  this.permissionService.loadMyPermissions().subscribe({
+    error: () => {
+      this.updateNavigation(role);
+      this.cdr.markForCheck();
+    }
+  });
 }
+
+  private updateNavigation(role: string): void {
+    const permissionStateLoaded =
+      this.permissionService.loadState === 'loaded';
+
+    this.navigationSections = (NAVIGATION_CONFIG[role] ?? [])
+      .map(section => ({
+        ...section,
+        items: section.items.filter(item =>
+          role !== 'TEACHER' ||
+          !item.requiredPermission ||
+          (permissionStateLoaded &&
+            this.permissionService.hasPermission(item.requiredPermission))
+        )
+      }))
+      .filter(section => section.items.length > 0);
+  }
 
 
   // =====================================================
@@ -329,6 +371,8 @@ logout(): void {
   }
 
   ngOnDestroy(): void {
+    this.permissionStateSubscription?.unsubscribe();
+
     if (this.notificationPollingSubscription) {
       this.notificationPollingSubscription.unsubscribe();
     }

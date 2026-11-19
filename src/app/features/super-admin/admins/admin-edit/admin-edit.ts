@@ -20,7 +20,9 @@ import {
 
 import { Admin } from '../../../../core/models/admin.model';
 import { AdminDetails } from '../../../../core/models/admin-details.model';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
 import { ErrorStateComponent } from '../../../../shared/components/error-state/error-state.component';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 import { LoadingComponent } from '../../../../shared/components/loading/loading.component';
 
 @Component({
@@ -29,7 +31,8 @@ import { LoadingComponent } from '../../../../shared/components/loading/loading.
 imports: [
   ReactiveFormsModule,
   LoadingComponent,
-  ErrorStateComponent
+  ErrorStateComponent,
+  InlineFeedbackComponent
 ],
   templateUrl: './admin-edit.html',
   styleUrl: './admin-edit.scss'
@@ -41,13 +44,13 @@ export class AdminEditComponent {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   admin: AdminDetails | null = null;
 
   loading = true;
   saving = false;
   error = '';
-  success = '';
 
   adminId = 0;
 
@@ -107,14 +110,17 @@ export class AdminEditComponent {
   }
 
   save(): void {
-    if (this.adminForm.invalid || this.saving) {
+    if (this.saving) {
+      return;
+    }
+
+    if (this.adminForm.invalid) {
       this.adminForm.markAllAsTouched();
       return;
     }
 
     this.saving = true;
     this.error = '';
-    this.success = '';
 
     this.adminService
       .updateAdmin(
@@ -128,8 +134,11 @@ export class AdminEditComponent {
         })
       )
       .subscribe({
-        next: (response: ApiResponse<Admin>) => {
-          this.success = response.message || 'Admin updated successfully.';
+        next: () => {
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Admin updated successfully.'
+          });
         },
 
         error: () => {

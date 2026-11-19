@@ -108,9 +108,8 @@
 
       <!-- MESSAGES -->
       @if (errorMessage) {
-        <div class="error-message">
-          {{ errorMessage }}
-        </div>
+        <app-inline-feedback kind="error" title="Student import could not be completed"
+          [message]="errorMessage" announcementPriority="assertive" />
       }
 
       @if (successMessage) {

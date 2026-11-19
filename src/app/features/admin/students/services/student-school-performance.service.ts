@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { ApiService } from '../../../../core/services/api.service';
 import {
   CreateStudentSchoolPerformanceRequest,
+  StudentSchoolPerformanceListOptions,
   StudentSchoolPerformance,
   StudentSchoolPerformanceApiResponse,
   StudentSchoolPerformancePage,
@@ -26,11 +27,26 @@ export class StudentSchoolPerformanceService {
   list(
     studentId: number,
     page = 0,
-    size = 20
+    size = 20,
+    options: StudentSchoolPerformanceListOptions = {}
   ): Observable<StudentSchoolPerformanceApiResponse<StudentSchoolPerformancePage>> {
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('page', page)
       .set('size', size);
+
+    const search = options.search?.trim();
+    if (search) {
+      params = params.set('search', search);
+    }
+    if (options.schoolId !== null && options.schoolId !== undefined) {
+      params = params.set('schoolId', options.schoolId);
+    }
+    if (options.sortBy) {
+      params = params.set('sortBy', options.sortBy);
+    }
+    if (options.sortDirection) {
+      params = params.set('sortDirection', options.sortDirection);
+    }
 
     return this.api.get<
       StudentSchoolPerformanceApiResponse<StudentSchoolPerformancePage>

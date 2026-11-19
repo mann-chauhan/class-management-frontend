@@ -4,6 +4,24 @@ This workflow is intended only for synthetic Leave acceptance testing. It uses a
 separate Spring profile, frontend configuration, port, and PostgreSQL database.
 It must not be pointed at `class_management_db` or the development backend.
 
+## Suite selection
+
+The default Playwright configuration is Leave-only. It matches the three
+specifications under `e2e/leave/` and does not scan Advertisement,
+Admin-password-reset, or other E2E directories.
+
+```bash
+# Alias for the Leave-only configuration.
+npm run e2e
+
+# Explicit equivalent.
+npm run e2e:leave
+```
+
+Both commands use `playwright.config.ts`, the Leave global setup and teardown,
+frontend `browser-test` configuration, frontend port `14200`, and the backend
+at `http://localhost:18080`.
+
 ## Current prepared configuration
 
 - Frontend: `http://localhost:14200`, started automatically by Playwright with the
@@ -77,7 +95,7 @@ bash scripts/leave-browser-fixtures.sh cleanup
 
 # Browser run; Playwright starts a non-reused Angular browser-test server on
 # port 14200, only after identity and fixture checks pass:
-npm run e2e
+npm run e2e:leave
 ```
 
 The browser-created Student request is appended to the same manifest from the

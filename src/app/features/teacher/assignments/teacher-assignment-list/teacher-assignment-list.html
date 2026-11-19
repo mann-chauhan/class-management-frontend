@@ -54,7 +54,7 @@
 
     <!-- Error -->
 
-    @if (errorMessage) {
+    @if (errorMessage && !pendingDelete) {
 
       <div class="error-state">
 
@@ -89,3 +89,15 @@
   </div>
 
 </div>
+<app-confirmation-dialog
+  [visible]="pendingDelete !== null"
+  title="Delete assignment?"
+  [message]="deleteConfirmationMessage"
+  confirmLabel="Delete assignment"
+  cancelLabel="Keep assignment"
+  [busy]="deletingId !== null"
+  busyLabel="Deleting…"
+  (confirmed)="confirmDelete()"
+  (cancelled)="cancelDelete()">
+  @if (errorMessage) { <app-inline-feedback kind="error" title="Unable to delete assignment" [message]="errorMessage" announcementPriority="polite" /> }
+</app-confirmation-dialog>

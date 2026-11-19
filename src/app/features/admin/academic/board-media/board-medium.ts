@@ -2,11 +2,13 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
 
 import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
 import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 import { TableColumn, TableAction } from '../../../../shared/components/data-table/data-table.component';
 
 import {
@@ -25,6 +27,7 @@ import { BoardMediumService } from './services/board-medium.service';
     SearchInputComponent,
     PageHeaderComponent,
     ConfirmationDialogComponent,
+    InlineFeedbackComponent,
   ],
   templateUrl: './board-medium.html',
   styleUrl: './board-medium.scss',
@@ -39,12 +42,14 @@ export class BoardMediumComponent {
 
   loading = false;
   saving = false;
+  deleting = false;
 
   searchTerm = '';
   statusFilter: 'ALL' | 'ACTIVE' | 'INACTIVE' = 'ALL';
 
-  errorMessage = '';
-  successMessage = '';
+  loadError = '';
+  formError = '';
+  deleteError = '';
 
   showForm = false;
   editingBoardMedium: BoardMedium | null = null;
@@ -86,17 +91,18 @@ readonly actions: TableAction[] = [
 
   loadBoardMedia(): void {
     this.loading = true;
-    this.errorMessage = '';
+    this.loadError = '';
 
     this.boardMediumService.getAll(0, 100, 'name,asc').subscribe({
       next: (response) => {
         this.boardMedia = response.content ?? [];
         this.applyFilters();
+        this.loadError = '';
         this.loading = false;
         this.cdr.markForCheck();
       },
       error: (error) => {
-        this.errorMessage =
+        this.loadError =
           error?.error?.message ?? 'Failed to load Board/Medium records.';
         this.loading = false;
         this.cdr.markForCheck();
@@ -132,7 +138,7 @@ readonly actions: TableAction[] = [
   openCreateForm(): void {
     this.editingBoardMedium = null;
     this.form = { name: '' };
-    this.errorMessage = '';
+    this.formError = '';
     this.showForm = true;
   }
 
@@ -141,7 +147,7 @@ readonly actions: TableAction[] = [
     this.form = {
       name: item.name,
     };
-    this.errorMessage = '';
+    this.formError = '';
     this.showForm = true;
   }
 
@@ -152,10 +158,12 @@ readonly actions: TableAction[] = [
   }
 
   saveBoardMedium(): void {
+    if (this.saving) return;
+
     const name = this.form.name.trim();
 
     if (!name) {
-      this.errorMessage = 'Please enter a Board/Medium name.';
+      this.formError = 'Please enter a Board/Medium name.';
       return;
     }
 
@@ -166,14 +174,14 @@ readonly actions: TableAction[] = [
     );
 
     if (duplicate) {
-      this.errorMessage = 'This Board/Medium already exists.';
+      this.formError = 'This Board/Medium already exists.';
       return;
     }
 
     const request: CreateBoardMediumRequest = { name };
 
     this.saving = true;
-    this.errorMessage = '';
+    this.formError = '';
 
     const operation = this.editingBoardMedium
       ? this.boardMediumService.update(
@@ -185,9 +193,12 @@ readonly actions: TableAction[] = [
     operation.subscribe({
       next: () => {
         const wasEditing = !!this.editingBoardMedium;
-        this.successMessage = wasEditing
-          ? 'Board/Medium updated successfully.'
-          : 'Board/Medium created successfully.';
+        this.feedbackService.show({
+          kind: 'success',
+          message: wasEditing
+            ? 'Board/Medium updated successfully.'
+            : 'Board/Medium created successfully.'
+        });
 
         this.showForm = false;
         this.editingBoardMedium = null;
@@ -196,7 +207,7 @@ readonly actions: TableAction[] = [
         this.cdr.markForCheck();
       },
       error: (error) => {
-        this.errorMessage =
+        this.formError =
           error?.error?.message ?? 'Failed to save Board/Medium.';
         this.saving = false;
         this.cdr.markForCheck();
@@ -210,6 +221,7 @@ onTableAction(event: { action: TableAction; row: BoardMedium }): void {
     this.openEditForm(event.row);
   } else if (event.action.type === 'delete') {
     this.boardMediumToDelete = event.row;
+    this.deleteError = '';
     this.showDeleteDialog = true;
   }
 }
@@ -217,27 +229,36 @@ onTableAction(event: { action: TableAction; row: BoardMedium }): void {
   cancelDelete(): void {
     this.showDeleteDialog = false;
     this.boardMediumToDelete = null;
+    this.deleteError = '';
   }
 
   confirmDeactivate(): void {
     if (!this.boardMediumToDelete) return;
+    if (this.deleting) return;
 
     const item = this.boardMediumToDelete;
-    this.errorMessage = '';
+    this.deleteError = '';
+    this.deleting = true;
 
     this.boardMediumService.delete(item.id).subscribe({
       next: () => {
-        this.successMessage = 'Board/Medium deactivated successfully.';
+        this.feedbackService.show({
+          kind: 'success',
+          message: 'Board/Medium deactivated successfully.'
+        });
+        this.deleting = false;
         this.cancelDelete();
         this.loadBoardMedia();
         this.cdr.markForCheck();
       },
       error: (error) => {
-        this.errorMessage =
+        this.deleteError =
           error?.error?.message ?? 'Failed to deactivate Board/Medium.';
-        this.cancelDelete();
+        this.deleting = false;
         this.cdr.markForCheck();
       },
     });
   }
+
+  private readonly feedbackService = inject(ActionFeedbackService);
 }

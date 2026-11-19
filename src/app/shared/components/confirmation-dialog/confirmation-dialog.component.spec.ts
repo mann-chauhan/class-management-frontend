@@ -89,4 +89,35 @@ describe('ConfirmationDialogComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.dialog-icon-danger')).toBeTruthy();
   });
+
+  it('disables both actions and shows the busy label while processing', async () => {
+    fixture.componentRef.setInput('visible', true);
+    fixture.componentRef.setInput('busy', true);
+    fixture.componentRef.setInput('busyLabel', 'Saving...');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const confirm = fixture.nativeElement.querySelector('.confirm-button') as HTMLButtonElement;
+    const cancel = fixture.nativeElement.querySelector('.cancel-button') as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    expect(cancel.disabled).toBe(true);
+    expect(cancel.textContent).toContain('Saving...');
+  });
+
+  it('restores normal actions when busy processing is released', async () => {
+    fixture.componentRef.setInput('visible', true);
+    fixture.componentRef.setInput('busy', true);
+    fixture.componentRef.setInput('busyLabel', 'Saving...');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('busy', false);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const confirm = fixture.nativeElement.querySelector('.confirm-button') as HTMLButtonElement;
+    const cancel = fixture.nativeElement.querySelector('.cancel-button') as HTMLButtonElement;
+    expect(confirm.disabled).toBe(false);
+    expect(cancel.disabled).toBe(false);
+    expect(cancel.textContent).toContain(component.cancelLabel);
+  });
 });

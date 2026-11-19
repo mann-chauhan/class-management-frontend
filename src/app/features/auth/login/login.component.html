@@ -50,16 +50,12 @@
 
         <!-- ERROR MESSAGE -->
         @if (errorMessage) {
-        <div class="error-message" role="alert">
-
-          <div class="error-icon">!</div>
-
-          <div>
-            <strong>Authentication Failed</strong>
-            <p>{{ errorMessage }}</p>
-          </div>
-
-        </div>
+          <app-inline-feedback
+            kind="error"
+            [message]="errorMessage"
+            title="Authentication failed"
+            announcementPriority="assertive">
+          </app-inline-feedback>
         }
 
 

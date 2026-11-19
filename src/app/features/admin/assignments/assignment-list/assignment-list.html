@@ -59,12 +59,11 @@
 
 
     @if (errorMessage) {
-
-      <div class="error-state">
-
-        {{ errorMessage }}
-
-      </div>
+      <app-inline-feedback
+        kind="error"
+        title="Assignment action failed"
+        [message]="errorMessage"
+        announcementPriority="polite" />
 
     }
 

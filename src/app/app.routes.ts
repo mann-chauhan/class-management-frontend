@@ -609,8 +609,11 @@ export const routes: Routes = [
       {
         path: 'teacher/assignments',
         component: TeacherAssignmentList,
-        canActivate: [roleGuard],
-        data: { roles: ['TEACHER'] }
+        canActivate: [roleGuard, permissionGuard],
+        data: {
+          roles: ['TEACHER'],
+          permissions: ['ASSIGNMENT_VIEW']
+        }
       },
 
       {
@@ -633,8 +636,11 @@ export const routes: Routes = [
       {
         path: 'teacher/assignments/:id/edit',
         component: TeacherAssignmentForm,
-        canActivate: [roleGuard],
-        data: { roles: ['TEACHER'] }
+        canActivate: [roleGuard, permissionGuard],
+        data: {
+          roles: ['TEACHER'],
+          permissions: ['ASSIGNMENT_VIEW']
+        }
       },
 
       // -------------------- STUDENTS -----------------------
@@ -642,22 +648,31 @@ export const routes: Routes = [
       {
         path: 'teacher/students',
         component: TeacherStudentListComponent,
-        canActivate: [roleGuard],
-        data: { roles: ['TEACHER'] }
+        canActivate: [roleGuard, permissionGuard],
+        data: {
+          roles: ['TEACHER'],
+          permissions: ['STUDENT_VIEW_NAME']
+        }
       },
 
       {
         path: 'teacher/students/create',
         component: TeacherStudentFormComponent,
-        canActivate: [roleGuard],
-        data: { roles: ['TEACHER'] }
+        canActivate: [roleGuard, permissionGuard],
+        data: {
+          roles: ['TEACHER'],
+          permissions: ['STUDENT_VIEW_NAME', 'STUDENT_CREATE']
+        }
       },
 
       {
         path: 'teacher/students/:id/edit',
         component: TeacherStudentFormComponent,
-        canActivate: [roleGuard],
-        data: { roles: ['TEACHER'] }
+        canActivate: [roleGuard, permissionGuard],
+        data: {
+          roles: ['TEACHER'],
+          permissions: ['STUDENT_VIEW_NAME']
+        }
       },
 
 

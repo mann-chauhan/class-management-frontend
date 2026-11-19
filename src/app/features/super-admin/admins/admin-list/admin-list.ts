@@ -26,6 +26,7 @@ import { ErrorStateComponent } from '../../../../shared/components/error-state/e
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
 import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -50,14 +51,16 @@ export class AdminListComponent {
 
   private readonly adminService = inject(AdminService);
   private readonly cdr = inject(ChangeDetectorRef);
-private readonly router = inject(Router);
+  private readonly router = inject(Router);
+  private readonly feedbackService = inject(ActionFeedbackService);
   admins: Admin[] = [];
 
 loading = true;
 error = '';
 
-showStatusDialog = false;
-selectedAdmin: Admin | null = null;
+  showStatusDialog = false;
+  selectedAdmin: Admin | null = null;
+  statusUpdating = false;
 
 searchTerm = '';
 
@@ -349,37 +352,61 @@ createAdmin(): void {
   }
 
   toggleAdminStatus(admin: Admin): void {
+  if (this.statusUpdating) {
+    return;
+  }
+
   this.selectedAdmin = admin;
   this.showStatusDialog = true;
   this.cdr.detectChanges();
 }
 
 confirmStatusChange(): void {
-  if (!this.selectedAdmin) {
+  if (!this.selectedAdmin || this.statusUpdating) {
     return;
   }
 
   const admin = this.selectedAdmin;
   const newStatus = !admin.isActive;
 
-  this.showStatusDialog = false;
-  this.selectedAdmin = null;
+  this.statusUpdating = true;
 
-  this.adminService.updateAdminStatus(admin.id, newStatus).subscribe({
+  this.adminService.updateAdminStatus(admin.id, newStatus).pipe(
+    finalize(() => {
+      this.statusUpdating = false;
+      this.cdr.detectChanges();
+    })
+  ).subscribe({
     next: () => {
       admin.isActive = newStatus;
+      this.feedbackService.show({
+        kind: 'success',
+        message: newStatus
+          ? 'Admin activated successfully.'
+          : 'Admin deactivated successfully.'
+      });
+      this.showStatusDialog = false;
+      this.selectedAdmin = null;
       this.cdr.detectChanges();
     },
     error: () => {
-      this.error =
-        `Unable to ${newStatus ? 'activate' : 'deactivate'} admin.`;
-
+      this.feedbackService.show({
+        kind: 'error',
+        message: `Unable to ${newStatus ? 'activate' : 'deactivate'} admin.`,
+        announcementPriority: 'assertive'
+      });
+      this.showStatusDialog = false;
+      this.selectedAdmin = null;
       this.cdr.detectChanges();
     }
   });
 }
 
-cancelStatusChange(): void {
+  cancelStatusChange(): void {
+  if (this.statusUpdating) {
+    return;
+  }
+
   this.showStatusDialog = false;
   this.selectedAdmin = null;
   this.cdr.detectChanges();

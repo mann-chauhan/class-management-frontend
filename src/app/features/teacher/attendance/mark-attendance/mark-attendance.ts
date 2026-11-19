@@ -30,6 +30,8 @@ import {
 import { RouterLink } from '@angular/router';
 
 import { PermissionService } from '../../../../core/auth/permission.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 export function formatLocalCalendarDate(date: Date): string {
   const year = date.getFullYear();
@@ -46,7 +48,8 @@ export function formatLocalCalendarDate(date: Date): string {
   imports: [
     CommonModule,
     FormsModule,
-    RouterLink
+    RouterLink,
+    InlineFeedbackComponent
   ],
 
   templateUrl: './mark-attendance.html',
@@ -62,8 +65,11 @@ export class MarkAttendanceComponent implements OnInit {
   private readonly cdr =
     inject(ChangeDetectorRef);
 
-    private readonly permissionService =
+  private readonly permissionService =
   inject(PermissionService);
+
+  private readonly feedbackService =
+  inject(ActionFeedbackService);
 
   canMarkAttendance(): boolean {
   return this.permissionService.hasPermission(
@@ -113,7 +119,6 @@ export class MarkAttendanceComponent implements OnInit {
 
   errorMessage = '';
 
-  successMessage = '';
 
 
   // =========================================================
@@ -180,8 +185,6 @@ export class MarkAttendanceComponent implements OnInit {
     this.students = [];
 
     this.studentStatuses = {};
-
-    this.successMessage = '';
 
     this.errorMessage = '';
 
@@ -302,6 +305,9 @@ getAbsentCount(): number {
 
   markAttendance(): void {
 
+    if (this.markingAttendance) {
+      return;
+    }
 
     if (!this.canMarkAttendance()) {
   this.errorMessage =
@@ -310,9 +316,6 @@ getAbsentCount(): number {
 }
 
     this.errorMessage = '';
-
-    this.successMessage = '';
-
 
     if (!this.selectedAssignmentId) {
 
@@ -373,9 +376,10 @@ getAbsentCount(): number {
 
         next: (response) => {
 
-          this.successMessage =
-            response.message ||
-            'Attendance marked successfully.';
+          this.feedbackService.show({
+            kind: 'success',
+            message: response.message || 'Attendance marked successfully.'
+          });
 
           this.markingAttendance = false;
 
@@ -383,15 +387,8 @@ getAbsentCount(): number {
         },
 
         error: (error) => {
-
-          console.error(
-            'Failed to mark attendance:',
-            error
-          );
-
           this.errorMessage =
-            error?.error?.message ||
-            'Failed to mark attendance.';
+            this.mutationMessage(error, 'Failed to mark attendance.');
 
           this.markingAttendance = false;
 
@@ -408,6 +405,10 @@ getAbsentCount(): number {
 
   private getTodayDate(): string {
     return formatLocalCalendarDate(new Date());
+  }
+
+  private mutationMessage(error: any, fallback: string): string {
+    return error?.error?.message || fallback;
   }
 
 }

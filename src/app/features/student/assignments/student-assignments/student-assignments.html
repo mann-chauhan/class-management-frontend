@@ -233,22 +233,18 @@
     @if (errorMessage) {
 
       <div class="error-state">
-
-        <span class="error-icon">
-          !
-        </span>
-
-        <div>
-
-          <strong>
-            Unable to load assignments
-          </strong>
-
-          <p>
-            {{ errorMessage }}
-          </p>
-
-        </div>
+        <app-inline-feedback
+          kind="error"
+          title="Assignments could not be loaded"
+          [message]="errorMessage"
+        />
+        <button
+          type="button"
+          [disabled]="loading"
+          (click)="loadAssignments()"
+        >
+          Retry loading assignments
+        </button>
 
       </div>
 

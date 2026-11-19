@@ -51,19 +51,12 @@
 
   @if (errorMessage) {
 
-  <div #formError class="error-banner" tabindex="-1" role="alert">
-
-    <div class="error-content">
-
-      <strong>
-        Something went wrong
-      </strong>
-
-      <span>
-        {{ errorMessage }}
-      </span>
-
-    </div>
+  <div #formError tabindex="-1">
+    <app-inline-feedback
+      kind="error"
+      title="Teacher role action failed"
+      [message]="errorMessage"
+      announcementPriority="polite" />
 
     <button type="button" class="error-close" aria-label="Dismiss error" (click)="errorMessage = ''">
 
@@ -330,6 +323,9 @@
                           isPermissionSelected(permission.id)
                         " [attr.aria-pressed]="
                           isPermissionSelected(permission.id)
+                        " [disabled]="
+                          isLegacyPermission(permission) &&
+                          !isPermissionSelected(permission.id)
                         " [attr.aria-label]="
                           isPermissionSelected(permission.id)
                             ? 'Remove ' + permission.name
@@ -368,6 +364,12 @@
                   </span>
                   }
 
+                  @if (isLegacyPermission(permission)) {
+                  <span class="required-badge">
+                    Legacy
+                  </span>
+                  }
+
                   @if (isPermissionSatisfyingDependency(permission)) {
                   <span class="satisfies-badge">
                     ✓ Satisfies requirement
@@ -377,12 +379,15 @@
                 </div>
 
 
-                <p class="permission-description">
-                  {{
-                  permission.description ||
-                  permission.code
-                  }}
-                </p>
+              <p class="permission-description">
+                  {{ getPermissionDescription(permission) }}
+              </p>
+
+              @if (isLegacyPermission(permission)) {
+              <p class="permission-description">
+                Retained selections are preserved for compatibility, but this permission does not authorize field-level Student updates.
+              </p>
+              }
 
 
                 <!-- REQUIRED PERMISSIONS -->

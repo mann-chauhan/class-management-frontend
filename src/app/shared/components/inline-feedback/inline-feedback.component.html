@@ -1,0 +1,58 @@
+<article
+  class="inline-feedback"
+  [class]="'inline-feedback inline-feedback--' + kind"
+  [attr.role]="liveRole"
+  [attr.aria-live]="liveMode"
+  aria-atomic="true"
+>
+  <span class="inline-feedback-icon" aria-hidden="true">
+    @switch (kind) {
+      @case ('success') { ✓ }
+      @case ('info') { i }
+      @case ('warning') { ! }
+      @case ('error') { × }
+    }
+  </span>
+
+  <div class="inline-feedback-content">
+    @if (title) {
+      <h2 class="inline-feedback-title">{{ safeText(title, 120) }}</h2>
+    }
+    <p class="inline-feedback-message">{{ safeText(message, 300) }}</p>
+    @if (description) {
+      <p class="inline-feedback-description">{{ safeText(description, 300) }}</p>
+    }
+    @if (partial; as partialResult) {
+      <p class="inline-feedback-partial-summary">{{ partialSummary(partialResult) }}</p>
+      @if (partialStatusMessage(partialResult); as statusMessage) {
+        <p class="inline-feedback-partial-status">{{ statusMessage }}</p>
+      }
+      @if (failedPreview(partialResult).length > 0) {
+        <ul class="inline-feedback-failed-items">
+          @for (item of failedPreview(partialResult); track failedItemTrack(item, $index)) {
+            <li>
+              <span>{{ safeText(item.label, 120) }}</span>
+              @if (item.reason) {
+                <span class="inline-feedback-failure-reason"> — {{ safeText(item.reason, 160) }}</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+      @if (hasMoreFailedItems(partialResult)) {
+        <p class="inline-feedback-more-items">More failed items are available in the feature details.</p>
+      }
+    }
+  </div>
+
+  @if (dismissible) {
+    <button
+      type="button"
+      class="inline-feedback-dismiss"
+      [attr.aria-label]="dismissLabel"
+      (click)="dismiss()"
+    >
+      <span aria-hidden="true">×</span>
+    </button>
+  }
+</article>

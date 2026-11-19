@@ -45,9 +45,8 @@
     }
   </section>
 
-  @if (success) { <div class="notice success" role="status">{{ success }}</div> }
-  @if (formError) { <div class="notice error" role="alert">{{ formError }}</div> }
-  @if (cancelError) { <div class="notice error" role="alert">{{ cancelError }}</div> }
+  @if (formError) { <app-inline-feedback kind="error" title="Unable to submit leave request" [message]="formError" announcementPriority="polite" /> }
+    @if (cancelError && !cancelDialogRequest) { <app-inline-feedback kind="error" title="Unable to cancel leave request" [message]="cancelError" announcementPriority="polite" /> }
 
   <section class="panel form-panel">
     <div class="section-heading">
@@ -218,3 +217,15 @@
     </section>
   </div> }
 </main>
+<app-confirmation-dialog
+  [visible]="cancelDialogRequest !== null"
+  title="Cancel pending leave request?"
+  message="This pending leave request will be cancelled. You can’t undo this action."
+  confirmLabel="Cancel request"
+  cancelLabel="Keep request"
+  [busy]="cancellingId !== null"
+  busyLabel="Cancelling…"
+  (confirmed)="confirmCancel()"
+  (cancelled)="closeCancelDialog()">
+  @if (cancelError) { <app-inline-feedback kind="error" title="Unable to cancel leave request" [message]="cancelError" announcementPriority="polite" /> }
+</app-confirmation-dialog>

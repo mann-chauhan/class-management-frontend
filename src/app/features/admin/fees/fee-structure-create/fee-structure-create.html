@@ -23,12 +23,13 @@
 
 
   <!-- ERROR -->
-  <div
-    class="error-banner"
-    *ngIf="errorMessage"
-  >
-    {{ errorMessage }}
-  </div>
+  @if (errorMessage) {
+    <app-inline-feedback
+      kind="error"
+      title="Fee structure creation failed"
+      [message]="errorMessage"
+      announcementPriority="polite" />
+  }
 
 
   <!-- LOADING -->

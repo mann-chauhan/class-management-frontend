@@ -60,21 +60,15 @@
        ERROR
   ====================================================== -->
 
-  @if (errorMessage) {
+  @if (loadingErrorMessage) {
 
-    <div class="error-banner">
+    <app-inline-feedback
+      kind="error"
+      title="Fee structures could not be loaded"
+      [message]="loadingErrorMessage"
+      announcementPriority="polite" />
 
-      <div class="error-content">
-
-        <strong>
-          Something went wrong
-        </strong>
-
-        <span>
-          {{ errorMessage }}
-        </span>
-
-      </div>
+    <div class="error-content">
 
       <button
         type="button"
@@ -87,6 +81,14 @@
 
     </div>
 
+  }
+
+  @if (mutationErrorMessage) {
+    <app-inline-feedback
+      kind="error"
+      title="Fee structure status update failed"
+      [message]="mutationErrorMessage"
+      announcementPriority="polite" />
   }
 
 

@@ -41,9 +41,11 @@
   </div>
 
   @if (errorMessage) {
-    <div class="error-card">
-      {{ errorMessage }}
-    </div>
+    <app-inline-feedback
+      kind="error"
+      title="Subject action failed"
+      [message]="errorMessage"
+      announcementPriority="polite" />
   }
 
   @if (loading) {

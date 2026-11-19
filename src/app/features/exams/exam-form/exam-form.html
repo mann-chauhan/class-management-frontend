@@ -10,13 +10,26 @@
     />
   </header>
 
-  @if (errorMessage) {
-    <div class="alert-error" role="alert">{{ errorMessage }}</div>
+  @if (loadingError) {
+    <app-inline-feedback
+      kind="error"
+      title="Unable to load exam form"
+      [message]="loadingError"
+      announcementPriority="polite" />
+    <button type="button" class="secondary-btn" (click)="retryLoading()">
+      Retry loading
+    </button>
+  } @else if (errorMessage) {
+    <app-inline-feedback
+      kind="error"
+      [title]="isEditMode ? 'Unable to update exam' : 'Unable to create exam'"
+      [message]="errorMessage"
+      announcementPriority="polite" />
   }
 
-  @if (loading) {
+  @if (loading && !loadingError) {
     <div class="form-card state-message">Loading exam details...</div>
-  } @else {
+  } @else if (!loadingError) {
     <form class="form-card" (ngSubmit)="save()">
       @if (isAdmin) {
         <div class="form-section">

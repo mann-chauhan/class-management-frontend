@@ -18,9 +18,11 @@
   </div>
 
   @if (errorMessage) {
-    <div class="error-message">
-      {{ errorMessage }}
-    </div>
+    <app-inline-feedback
+      kind="error"
+      title="Fee structure update failed"
+      [message]="errorMessage"
+      announcementPriority="polite" />
   }
 
   @if (loading) {

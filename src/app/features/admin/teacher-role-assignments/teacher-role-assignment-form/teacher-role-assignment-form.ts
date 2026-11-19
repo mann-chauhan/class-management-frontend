@@ -38,6 +38,8 @@ import {
   TeacherRoleScope,
   CreateTeacherRoleAssignmentRequest
 } from '../models/teacher-role-assignment.model';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 
 @Component({
@@ -45,7 +47,8 @@ import {
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    InlineFeedbackComponent
   ],
   templateUrl: './teacher-role-assignment-form.html',
   styleUrl: './teacher-role-assignment-form.scss'
@@ -82,6 +85,9 @@ export class TeacherRoleAssignmentForm implements OnInit {
 
   private readonly cdr =
     inject(ChangeDetectorRef);
+
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
 
   // =========================================================
@@ -178,7 +184,6 @@ export class TeacherRoleAssignmentForm implements OnInit {
 
   errorMessage = '';
 
-  successMessage = '';
 
 
   // =========================================================
@@ -1193,7 +1198,6 @@ loadClassesForEdit(
 
     this.errorMessage = '';
 
-    this.successMessage = '';
 
 
     // -------------------------------------------------------
@@ -1313,13 +1317,6 @@ loadClassesForEdit(
 
             this.submitting = false;
 
-            this.successMessage =
-              response?.message ??
-              'Teacher role assignment updated successfully.';
-
-            this.cdr.detectChanges();
-
-
             // ---------------------------------------------
             // DRAWER MODE
             // ---------------------------------------------
@@ -1330,6 +1327,12 @@ loadClassesForEdit(
 
               return;
             }
+
+            this.feedbackService.show({
+              kind: 'success',
+              message: response?.message ?? 'Teacher role assignment updated successfully.',
+              persistAcrossNavigation: true
+            });
 
 
             // ---------------------------------------------
@@ -1380,13 +1383,6 @@ loadClassesForEdit(
 
           this.submitting = false;
 
-          this.successMessage =
-            response?.message ??
-            'Teacher role assigned successfully.';
-
-          this.cdr.detectChanges();
-
-
           // ---------------------------------------------
           // DRAWER MODE
           // ---------------------------------------------
@@ -1397,6 +1393,12 @@ loadClassesForEdit(
 
             return;
           }
+
+          this.feedbackService.show({
+            kind: 'success',
+            message: response?.message ?? 'Teacher role assigned successfully.',
+            persistAcrossNavigation: true
+          });
 
 
           // ---------------------------------------------

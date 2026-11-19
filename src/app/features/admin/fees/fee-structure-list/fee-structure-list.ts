@@ -23,6 +23,8 @@ import {
 import { FeeStructureService } from '../services/fee-structure.service';
 
 import { FeeStructureCreateComponent } from '../fee-structure-create/fee-structure-create';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-fee-structure-list',
@@ -31,7 +33,8 @@ import { FeeStructureCreateComponent } from '../fee-structure-create/fee-structu
   imports: [
     DataTableComponent,
     FormsModule,
-    FeeStructureCreateComponent
+    FeeStructureCreateComponent,
+    InlineFeedbackComponent
   ],
 
   templateUrl: './fee-structure-list.html',
@@ -51,6 +54,9 @@ export class FeeStructureList implements OnInit {
   private readonly cdr =
     inject(ChangeDetectorRef);
 
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
+
 
   // =====================================================
   // MODAL
@@ -67,6 +73,10 @@ export class FeeStructureList implements OnInit {
   onFeeStructureCreated(): void {
     this.isCreateModalOpen = false;
     this.loadFeeStructures();
+    this.feedbackService.show({
+      kind: 'success',
+      message: 'Fee structure created successfully.'
+    });
   }
 
 
@@ -116,6 +126,9 @@ export class FeeStructureList implements OnInit {
   loading = false;
 
   errorMessage = '';
+  loadingErrorMessage = '';
+  mutationErrorMessage = '';
+  private readonly pendingStatusIds = new Set<number>();
 
 
   // =====================================================
@@ -186,6 +199,7 @@ export class FeeStructureList implements OnInit {
   private loadAcademicYears(): void {
 
     this.loading = true;
+    this.loadingErrorMessage = '';
     this.errorMessage = '';
 
     this.academicYearService
@@ -211,9 +225,10 @@ export class FeeStructureList implements OnInit {
             error
           );
 
-          this.errorMessage =
+          this.loadingErrorMessage =
             error?.error?.message ??
             'Failed to load academic years.';
+          this.errorMessage = this.loadingErrorMessage;
 
           this.loading = false;
 
@@ -233,6 +248,7 @@ export class FeeStructureList implements OnInit {
   loadFeeStructures(): void {
 
     this.loading = true;
+    this.loadingErrorMessage = '';
     this.errorMessage = '';
 
     const academicYearId =
@@ -262,9 +278,10 @@ export class FeeStructureList implements OnInit {
             error
           );
 
-          this.errorMessage =
+          this.loadingErrorMessage =
             error?.error?.message ??
             'Failed to load fee structures.';
+          this.errorMessage = this.loadingErrorMessage;
 
           this.loading = false;
 
@@ -326,7 +343,9 @@ export class FeeStructureList implements OnInit {
     if (feeStructure.isActive) {
 
       actions.push({
-        label: 'Deactivate',
+        label: this.pendingStatusIds.has(feeStructure.id)
+          ? 'Deactivating...'
+          : 'Deactivate',
         type: 'deactivate',
         danger: true
       });
@@ -334,7 +353,9 @@ export class FeeStructureList implements OnInit {
     } else {
 
       actions.push({
-        label: 'Activate',
+        label: this.pendingStatusIds.has(feeStructure.id)
+          ? 'Activating...'
+          : 'Activate',
         type: 'activate'
       });
 
@@ -413,6 +434,14 @@ export class FeeStructureList implements OnInit {
       return;
     }
 
+    if (this.pendingStatusIds.has(feeStructure.id)) {
+      return;
+    }
+
+    this.pendingStatusIds.add(feeStructure.id);
+    this.mutationErrorMessage = '';
+    this.errorMessage = '';
+
     this.feeStructureService
       .updateStatus(
         feeStructure.id,
@@ -422,22 +451,30 @@ export class FeeStructureList implements OnInit {
       )
       .subscribe({
 
-        next: () => {
+        next: (response: any) => {
 
+          this.pendingStatusIds.delete(feeStructure.id);
           this.loadFeeStructures();
+          this.feedbackService.show({
+            kind: 'success',
+            message: response?.message || 'Fee structure activated successfully.'
+          });
 
         },
 
         error: error => {
+
+          this.pendingStatusIds.delete(feeStructure.id);
 
           console.error(
             'Failed to activate fee structure',
             error
           );
 
-          this.errorMessage =
+          this.mutationErrorMessage =
             error?.error?.message ??
             'Failed to activate fee structure.';
+          this.errorMessage = this.mutationErrorMessage;
 
           this.cdr.detectChanges();
 
@@ -460,6 +497,14 @@ export class FeeStructureList implements OnInit {
       return;
     }
 
+    if (this.pendingStatusIds.has(feeStructure.id)) {
+      return;
+    }
+
+    this.pendingStatusIds.add(feeStructure.id);
+    this.mutationErrorMessage = '';
+    this.errorMessage = '';
+
     this.feeStructureService
       .updateStatus(
         feeStructure.id,
@@ -469,22 +514,30 @@ export class FeeStructureList implements OnInit {
       )
       .subscribe({
 
-        next: () => {
+        next: (response: any) => {
 
+          this.pendingStatusIds.delete(feeStructure.id);
           this.loadFeeStructures();
+          this.feedbackService.show({
+            kind: 'success',
+            message: response?.message || 'Fee structure deactivated successfully.'
+          });
 
         },
 
         error: error => {
+
+          this.pendingStatusIds.delete(feeStructure.id);
 
           console.error(
             'Failed to deactivate fee structure',
             error
           );
 
-          this.errorMessage =
+          this.mutationErrorMessage =
             error?.error?.message ??
             'Failed to deactivate fee structure.';
+          this.errorMessage = this.mutationErrorMessage;
 
           this.cdr.detectChanges();
 

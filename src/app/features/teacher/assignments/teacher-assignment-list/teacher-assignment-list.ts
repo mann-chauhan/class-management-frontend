@@ -18,6 +18,9 @@ import { SearchInputComponent } from '../../../../shared/components/search-input
 
 import { Assignment } from '../../../admin/assignments/models/assignment.model';
 import { TeacherAssignmentService } from '../services/teacher-assignment.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
+import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 
 
 @Component({
@@ -28,7 +31,9 @@ import { TeacherAssignmentService } from '../services/teacher-assignment.service
   imports: [
     CommonModule,
     DataTableComponent,
-    SearchInputComponent
+    SearchInputComponent,
+    InlineFeedbackComponent,
+    ConfirmationDialogComponent
   ],
 
   templateUrl: './teacher-assignment-list.html',
@@ -59,6 +64,9 @@ export class TeacherAssignmentList implements OnInit {
   errorMessage = '';
 
   search = '';
+  pendingDelete: Assignment | null = null;
+  deletingId: number | null = null;
+  private readonly feedbackService = inject(ActionFeedbackService);
 
 
   // =========================================================
@@ -305,19 +313,16 @@ columns: TableColumn[] = [
     assignment: Assignment
   ): void {
 
-    const confirmed =
-      window.confirm(
-        `Are you sure you want to delete "${assignment.title}"?`
-      );
+    if (this.deletingId !== null) return;
+    this.pendingDelete = assignment;
+    this.errorMessage = '';
+    this.cdr.detectChanges();
+  }
 
-
-    if (!confirmed) {
-
-      return;
-
-    }
-
-
+  confirmDelete(): void {
+    if (!this.pendingDelete || this.deletingId !== null) return;
+    const assignment = this.pendingDelete;
+    this.deletingId = assignment.id;
     this.teacherAssignmentService
       .deleteMyAssignment(
         assignment.id
@@ -333,6 +338,9 @@ columns: TableColumn[] = [
             );
 
           this.applySearch();
+          this.pendingDelete = null;
+          this.deletingId = null;
+          this.feedbackService.show({ kind: 'success', message: 'Assignment deleted successfully.' });
 
           this.cdr.detectChanges();
 
@@ -349,6 +357,7 @@ columns: TableColumn[] = [
           this.errorMessage =
             error?.error?.message ||
             'Failed to delete assignment. Please try again.';
+          this.deletingId = null;
 
           this.cdr.detectChanges();
 
@@ -356,6 +365,17 @@ columns: TableColumn[] = [
 
       });
 
+  }
+
+  cancelDelete(): void {
+    if (this.deletingId !== null) return;
+    this.pendingDelete = null;
+    this.errorMessage = '';
+    this.cdr.detectChanges();
+  }
+
+  get deleteConfirmationMessage(): string {
+    return `Are you sure you want to delete "${this.pendingDelete?.title || ''}"?`;
   }
 
 }

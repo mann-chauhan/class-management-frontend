@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { ExamHeroComponent } from '../shared/exam-hero/exam-hero';
+import { ActionFeedbackService } from '../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../shared/components/inline-feedback/inline-feedback.component';
 
 import { ExamService } from '../services/exam.service';
 import {
@@ -16,7 +18,7 @@ import {
 @Component({
   selector: 'app-exam-marks-entry',
   standalone: true,
-  imports: [CommonModule, FormsModule, ConfirmationDialogComponent, ExamHeroComponent],
+  imports: [CommonModule, FormsModule, ConfirmationDialogComponent, ExamHeroComponent, InlineFeedbackComponent],
   templateUrl: './marks-entry.html',
   styleUrl: './marks-entry.scss'
 })
@@ -25,6 +27,7 @@ export class MarksEntryComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly service = inject(ExamService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   readonly role = this.route.snapshot.data['examRole'] as 'ADMIN' | 'TEACHER';
   readonly examId = Number(this.route.snapshot.paramMap.get('id'));
@@ -49,11 +52,11 @@ export class MarksEntryComponent implements OnInit {
   loadingMarks = false;
   saving = false;
   errorMessage = '';
-  successMessage = '';
+  loadError = '';
 
   ngOnInit(): void {
     if (!Number.isSafeInteger(this.examId) || this.examId < 1) {
-      this.errorMessage = 'Invalid exam ID.';
+      this.loadError = 'Invalid exam ID.';
       this.loadingExam = false;
       return;
     }
@@ -68,9 +71,9 @@ export class MarksEntryComponent implements OnInit {
         this.loadingExam = false;
 
         if (!this.exam) {
-          this.errorMessage = 'Exam was not found.';
+          this.loadError = 'Exam was not found.';
         } else if (this.exam.status !== 'PUBLISHED') {
-          this.errorMessage = 'Publish the exam before managing its marks.';
+          this.loadError = 'Publish the exam before managing its marks.';
         } else {
           this.loadMarks();
         }
@@ -79,7 +82,7 @@ export class MarksEntryComponent implements OnInit {
       },
       error: error => {
         this.loadingExam = false;
-        this.errorMessage = error?.error?.message || 'Could not load the exam.';
+        this.loadError = error?.error?.message || 'Could not load the exam.';
         this.cdr.markForCheck();
       }
     });
@@ -114,7 +117,7 @@ export class MarksEntryComponent implements OnInit {
     }
 
     this.loadingMarks = true;
-    this.errorMessage = '';
+    this.loadError = '';
 
     const request$ = this.role === 'ADMIN'
       ? this.service.getAdminMarks(this.examId, this.page, this.pageSize)
@@ -135,7 +138,7 @@ export class MarksEntryComponent implements OnInit {
       },
       error: error => {
         this.loadingMarks = false;
-        this.errorMessage =
+        this.loadError =
           error?.error?.message || 'Could not load the candidate roster.';
         this.cdr.markForCheck();
       }
@@ -225,7 +228,6 @@ export class MarksEntryComponent implements OnInit {
       this.dirtyCandidateIds.add(mark.candidateId);
     }
 
-    this.successMessage = '';
     this.errorMessage = '';
     this.bulkActionError = '';
     this.persistEntries(this.entriesForCandidateIds(frozenIds), true);
@@ -245,7 +247,6 @@ export class MarksEntryComponent implements OnInit {
     }
 
     this.dirtyCandidateIds.add(mark.candidateId);
-    this.successMessage = '';
     this.errorMessage = '';
   }
 
@@ -285,7 +286,6 @@ export class MarksEntryComponent implements OnInit {
     if (this.saving || !this.exam || entries.length === 0) return;
 
     this.errorMessage = '';
-    this.successMessage = '';
     this.saving = true;
 
     const request$ = this.role === 'ADMIN'
@@ -310,7 +310,10 @@ export class MarksEntryComponent implements OnInit {
 
         this.saving = false;
         if (savedMarks.length === entries.length) {
-          this.successMessage = `${savedMarks.length} mark${savedMarks.length === 1 ? '' : 's'} saved successfully.`;
+          this.feedbackService.show({
+            kind: 'success',
+            message: response.message || `${savedMarks.length} mark${savedMarks.length === 1 ? '' : 's'} saved successfully.`
+          });
           if (fromBulkAction) this.closeBulkActionAfterSave();
         } else {
           const message =

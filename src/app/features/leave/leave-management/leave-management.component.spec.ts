@@ -3,6 +3,7 @@ import { of, Subject, throwError } from 'rxjs';
 
 import { LeaveService } from '../services/leave.service';
 import { LeaveManagementComponent } from './leave-management.component';
+import { ActionFeedbackService } from '../../../core/services/action-feedback.service';
 
 describe('LeaveManagementComponent leave-day calculation', () => {
   let component: LeaveManagementComponent;
@@ -15,6 +16,7 @@ describe('LeaveManagementComponent leave-day calculation', () => {
     submit: ReturnType<typeof vi.fn>;
     cancel: ReturnType<typeof vi.fn>;
   };
+  let feedbackService: { show: ReturnType<typeof vi.fn> };
 
   const request = (id: number, status: 'PENDING' | 'CANCELLED' = 'PENDING') => ({
     id,
@@ -49,10 +51,14 @@ describe('LeaveManagementComponent leave-day calculation', () => {
       submit: vi.fn(),
       cancel: vi.fn(),
     };
+    feedbackService = { show: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [LeaveManagementComponent],
-      providers: [{ provide: LeaveService, useValue: service }]
+      providers: [
+        { provide: LeaveService, useValue: service },
+        { provide: ActionFeedbackService, useValue: feedbackService }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(LeaveManagementComponent);
@@ -127,6 +133,28 @@ describe('LeaveManagementComponent leave-day calculation', () => {
 
     expect(component.formError).toBe('Submission failed');
     expect(component.submitting).toBe(false);
+    expect(component.startDate).toBe('2099-10-26');
+    expect(component.reason).toBe('Appointment');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-inline-feedback')).not.toBeNull();
+  });
+
+  it('submits successfully with one toast, resets the form, and refreshes the list', () => {
+    component.startDate = '2099-10-26';
+    component.totalLeaveDays = 1;
+    component.reason = 'Appointment';
+    service.submit.mockReturnValue(of({ message: 'Submitted', data: request(49) }));
+
+    component.submit();
+
+    expect(feedbackService.show).toHaveBeenCalledTimes(1);
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: 'Submitted'
+    });
+    expect(component.startDate).toBe('');
+    expect(component.reason).toBe('');
+    expect(service.list).toHaveBeenCalledTimes(1);
   });
 
   it('prevents duplicate submissions while the first request is pending', () => {
@@ -149,9 +177,13 @@ describe('LeaveManagementComponent leave-day calculation', () => {
     service.cancel.mockReturnValue(throwError(() => ({ error: { message: 'Cancellation failed' } })));
 
     component.cancel(request(50));
+    component.confirmCancel();
 
     expect(component.cancelError).toBe('Cancellation failed');
     expect(component.cancellingId).toBeNull();
+    expect(component.selected).toBeNull();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-inline-feedback')).not.toBeNull();
     vi.restoreAllMocks();
   });
 
@@ -161,10 +193,36 @@ describe('LeaveManagementComponent leave-day calculation', () => {
     service.cancel.mockReturnValue(of({ message: 'Cancelled', data: cancelled }));
 
     component.cancel(request(51));
+    component.confirmCancel();
 
     expect(component.selected).toEqual(cancelled);
-    expect(component.success).toBe('Cancelled');
+    expect(feedbackService.show).toHaveBeenCalledTimes(1);
+    expect(feedbackService.show).toHaveBeenCalledWith({
+      kind: 'success',
+      message: 'Cancelled'
+    });
     expect(service.list).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
+
+  it('blocks duplicate cancellation while the first request is pending', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const cancellation = new Subject<any>();
+    service.cancel.mockReturnValue(cancellation);
+    const pending = request(52);
+
+    component.cancel(pending);
+    component.confirmCancel();
+    component.cancel(pending);
+    component.confirmCancel();
+
+    expect(service.cancel).toHaveBeenCalledTimes(1);
+    expect(component.cancellingId).toBe(52);
+
+    cancellation.next({ message: 'Cancelled', data: request(52, 'CANCELLED') });
+    cancellation.complete();
+
+    expect(component.cancellingId).toBeNull();
     vi.restoreAllMocks();
   });
 

@@ -17,6 +17,8 @@ import {
 } from '../models/fee-structure.model';
 
 import { FeeStructureService } from '../services/fee-structure.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-fee-structure-edit',
@@ -24,7 +26,8 @@ import { FeeStructureService } from '../services/fee-structure.service';
   imports: [
     CommonModule,
     FormsModule,
-    ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    InlineFeedbackComponent
   ],
   templateUrl: './fee-structure-edit.html',
   styleUrl: './fee-structure-edit.scss'
@@ -35,6 +38,7 @@ export class FeeStructureEdit implements OnInit {
   private readonly router = inject(Router);
   private readonly feeStructureService = inject(FeeStructureService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   feeStructure: FeeStructure | null = null;
 
@@ -132,8 +136,14 @@ export class FeeStructureEdit implements OnInit {
     this.feeStructureService
       .update(this.feeStructure.id, request)
       .subscribe({
-        next: () => {
+        next: (response: any) => {
           this.saving = false;
+
+          this.feedbackService.show({
+            kind: 'success',
+            message: response?.message || 'Fee structure updated successfully.',
+            persistAcrossNavigation: true
+          });
 
           this.router.navigate([
             '/admin/fees/fee-structures'

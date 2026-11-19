@@ -8,22 +8,12 @@
     (actionClick)="openCreateForm()"
   ></app-page-header>
 
-  @if (successMessage) {
-    <div class="alert alert-success" role="status">
-      {{ successMessage }}
-      <button type="button" class="alert-close" (click)="successMessage = ''">
-        &times;
-      </button>
-    </div>
-  }
-
-  @if (errorMessage && !showForm) {
-    <div class="alert alert-error" role="alert">
-      {{ errorMessage }}
-      <button type="button" class="alert-close" (click)="errorMessage = ''">
-        &times;
-      </button>
-    </div>
+  @if (loadError && boardMedia.length > 0) {
+    <app-inline-feedback
+      kind="error"
+      title="Board / Medium records could not be loaded"
+      [message]="loadError"
+    ></app-inline-feedback>
   }
 
   <section class="filter-card">
@@ -48,9 +38,9 @@
     </div>
   </section>
 
-  @if (errorMessage && !showForm && boardMedia.length === 0) {
+  @if (loadError && boardMedia.length === 0) {
     <div class="empty-state">
-      <p>{{ errorMessage }}</p>
+      <p>{{ loadError }}</p>
       <button type="button" class="btn btn-secondary" (click)="loadBoardMedia()">
         Retry
       </button>
@@ -112,10 +102,12 @@
       </header>
 
       <form (ngSubmit)="saveBoardMedium()">
-        @if (errorMessage) {
-          <div class="alert alert-error" role="alert">
-            {{ errorMessage }}
-          </div>
+        @if (formError) {
+          <app-inline-feedback
+            kind="error"
+            title="Board / Medium could not be saved"
+            [message]="formError"
+          ></app-inline-feedback>
         }
 
         <div class="form-group">
@@ -161,6 +153,16 @@
   [confirmLabel]="'Deactivate'"
   [cancelLabel]="'Cancel'"
   [danger]="true"
+  [busy]="deleting"
+  busyLabel="Deactivating..."
   (confirmed)="confirmDeactivate()"
   (cancelled)="cancelDelete()"
-></app-confirmation-dialog>
+>
+  @if (deleteError) {
+    <app-inline-feedback
+      kind="error"
+      title="Board / Medium could not be deactivated"
+      [message]="deleteError"
+    ></app-inline-feedback>
+  }
+</app-confirmation-dialog>

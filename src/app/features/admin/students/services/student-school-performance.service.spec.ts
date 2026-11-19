@@ -46,6 +46,36 @@ describe('StudentSchoolPerformanceService', () => {
     expect(params.has('sortDirection')).toBe(false);
   });
 
+  it('adds only the supported search, school, and sort parameters', () => {
+    service.list(12, 0, 20, {
+      search: '  Final Exam ',
+      schoolId: 4,
+      sortBy: 'schoolName',
+      sortDirection: 'asc'
+    }).subscribe();
+
+    const params = api.get.mock.calls[0][1];
+    expect(params.get('search')).toBe('Final Exam');
+    expect(params.get('schoolId')).toBe('4');
+    expect(params.get('sortBy')).toBe('schoolName');
+    expect(params.get('sortDirection')).toBe('asc');
+  });
+
+  it('does not send empty optional filters', () => {
+    service.list(12, 0, 20, {
+      search: '   ',
+      schoolId: null,
+      sortBy: undefined,
+      sortDirection: undefined
+    }).subscribe();
+
+    const params = api.get.mock.calls[0][1];
+    expect(params.has('search')).toBe(false);
+    expect(params.has('schoolId')).toBe(false);
+    expect(params.has('sortBy')).toBe(false);
+    expect(params.has('sortDirection')).toBe(false);
+  });
+
   it('loads the summary endpoint without inventing query parameters', () => {
     service.summary(12).subscribe();
 

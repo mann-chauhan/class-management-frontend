@@ -20,6 +20,8 @@ import { SearchInputComponent } from '../../../../shared/components/search-input
 
 import { Assignment } from '../models/assignment.model';
 import { AssignmentService } from '../services/assignment.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 
 @Component({
@@ -31,7 +33,8 @@ import { AssignmentService } from '../services/assignment.service';
     CommonModule,
     DataTableComponent,
     SearchInputComponent,
-ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    InlineFeedbackComponent
   ],
 
   templateUrl: './assignment-list.html',
@@ -48,6 +51,9 @@ export class AssignmentList implements OnInit {
   private readonly cdr =
     inject(ChangeDetectorRef);
 
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
+
 
 assignments: Assignment[] = [];
 
@@ -56,6 +62,8 @@ private allAssignments: Assignment[] = [];
   loading = false;
 
   errorMessage = '';
+
+  deleting = false;
 
   search = '';
 
@@ -316,12 +324,14 @@ this.allAssignments =
       this.pendingAssignment;
 
 
-    if (!assignment) {
+    if (!assignment || this.deleting) {
 
       return;
 
     }
 
+    this.deleting = true;
+    this.errorMessage = '';
 
     this.showDeleteDialog = false;
 
@@ -334,7 +344,14 @@ this.allAssignments =
       )
       .subscribe({
 
-        next: () => {
+        next: (response) => {
+
+          this.deleting = false;
+
+          this.feedbackService.show({
+            kind: 'success',
+            message: response.message || 'Assignment deleted successfully.'
+          });
 
           this.allAssignments =
             this.allAssignments.filter(
@@ -351,12 +368,10 @@ this.allAssignments =
 
         error: (error) => {
 
-          console.error(
-            'Failed to delete assignment:',
-            error
-          );
+          this.deleting = false;
 
           this.errorMessage =
+            error?.error?.message ||
             'Failed to delete assignment. Please try again.';
 
           this.cdr.detectChanges();

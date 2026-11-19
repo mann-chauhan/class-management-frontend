@@ -34,6 +34,9 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
 import { ErrorStateComponent } from '../../../shared/components/error-state/error-state.component';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { formatLeaveAuditTimestamp } from '../utils/leave-date-time';
+import { ActionFeedbackService } from '../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../shared/components/inline-feedback/inline-feedback.component';
+import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 
 @Component({
   selector: 'app-admin-leave-management',
@@ -48,6 +51,8 @@ import { formatLeaveAuditTimestamp } from '../utils/leave-date-time';
     EmptyStateComponent,
     ErrorStateComponent,
     PaginationComponent,
+    InlineFeedbackComponent,
+    ConfirmationDialogComponent,
   ],
   templateUrl: './admin-leave-management.component.html',
   styleUrl: './admin-leave-management.component.scss',
@@ -57,6 +62,7 @@ export class AdminLeaveManagementComponent implements OnInit {
   private readonly service = inject(LeaveService);
   private readonly academicYearService = inject(AcademicYearService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   requests: LeaveRequest[] = [];
   selected: LeaveRequest | null = null;
@@ -68,14 +74,15 @@ export class AdminLeaveManagementComponent implements OnInit {
   reportLoading = false;
 
   processingId: number | null = null;
+  pendingDecision: 'approve' | 'reject' | null = null;
 
   listError = '';
   detailError = '';
   decisionError = '';
+  dialogDecisionError = '';
   yearsError = '';
   summaryError = '';
   reportError = '';
-  success = '';
 
   page = 0;
   totalPages = 0;
@@ -277,6 +284,7 @@ export class AdminLeaveManagementComponent implements OnInit {
     this.detailRequestId = request.id;
     this.detailError = '';
     this.decisionError = '';
+    this.dialogDecisionError = '';
 
     this.service.adminGet(request.id).subscribe({
       next: (response) => {
@@ -489,12 +497,12 @@ export class AdminLeaveManagementComponent implements OnInit {
       return;
     }
 
-    const action = status === 'approve' ? 'Approve' : 'Reject';
+    this.pendingDecision = status;
+  }
 
-    if (!confirm(`${action} this leave request?`)) {
-      return;
-    }
-
+  confirmDecision(): void {
+    if (!this.selected || !this.pendingDecision || this.processingId !== null) return;
+    const status = this.pendingDecision;
     const id = this.selected.id;
     this.processingId = id;
 
@@ -506,22 +514,38 @@ export class AdminLeaveManagementComponent implements OnInit {
         : this.service.reject(id, request);
 
     operation.subscribe({
-      next: (response) => {
-        this.success = response.message || `Leave request ${status}d.`;
+        next: (response) => {
+        this.feedbackService.show({
+          kind: 'success',
+          message: response.message || `Leave request ${status}d.`,
+        });
         this.selected = response.data;
         this.processingId = null;
+        this.pendingDecision = null;
         this.comment = '';
 
         this.load(true);
         this.loadSummary();
       },
       error: (error) => {
-        this.decisionError =
-          error?.error?.message || 'Unable to update leave request.';
+        this.decisionError = this.mutationMessage(
+          error,
+          'Unable to update leave request.'
+        );
+        this.dialogDecisionError = this.decisionError;
+        this.decisionError = '';
         this.processingId = null;
         this.cdr.detectChanges();
       },
     });
+  }
+
+  cancelDecision(): void {
+    if (this.processingId !== null) return;
+    this.pendingDecision = null;
+    this.decisionError = '';
+    this.dialogDecisionError = '';
+    this.cdr.detectChanges();
   }
 
   applyFilters(): void {
@@ -597,5 +621,9 @@ export class AdminLeaveManagementComponent implements OnInit {
       case 'CANCELLED':
         return 'neutral';
     }
+  }
+
+  private mutationMessage(error: any, fallback: string): string {
+    return error?.error?.message || fallback;
   }
 }

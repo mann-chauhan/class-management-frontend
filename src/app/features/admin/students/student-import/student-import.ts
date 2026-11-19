@@ -26,6 +26,8 @@ import { AcademicYearService } from '../../academic/academic-years/services/acad
 import { ClassService } from '../../academic/classes/class.service';
 import { SectionService } from '../../academic/classes/section.service';
 import { FeeStructureService } from '../../fees/services/fee-structure.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 import {
   StudentImportError,
@@ -55,7 +57,7 @@ interface StudentImportMapCandidate {
 @Component({
   selector: 'app-student-import',
   standalone: true,
-  imports: [],
+  imports: [InlineFeedbackComponent],
   templateUrl: './student-import.html',
   styleUrl: './student-import.scss'
 })
@@ -70,6 +72,7 @@ export class StudentImportComponent {
   private readonly classService = inject(ClassService);
   private readonly sectionService = inject(SectionService);
   private readonly feeStructureService = inject(FeeStructureService);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   @Output() closed = new EventEmitter<void>();
   @Output() imported = new EventEmitter<void>();
@@ -385,6 +388,12 @@ export class StudentImportComponent {
 
           this.successMessage =
             `${this.importResult.importedStudents} student(s) imported successfully.`;
+          this.feedbackService.show({
+            kind: this.importResult.skippedStudents > 0 ? 'warning' : 'success',
+            message: this.importResult.skippedStudents > 0
+              ? `${this.importResult.importedStudents} student(s) imported; ${this.importResult.skippedStudents} skipped.`
+              : `${this.importResult.importedStudents} student(s) imported successfully.`
+          });
 
           this.cdr.detectChanges();
           this.imported.emit();

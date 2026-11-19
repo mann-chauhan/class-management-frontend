@@ -152,38 +152,12 @@
          MESSAGES
          =================================================== -->
 
-    @if (successMessage) {
-
-    <div class="feedback-message success-message" role="status">
-
-      <span class="feedback-icon" aria-hidden="true">
-        ✓
-      </span>
-
-      <div>
-        <strong>Attendance saved</strong>
-        <p>{{ successMessage }}</p>
-      </div>
-
-    </div>
-
-    }
-
-
     @if (errorMessage) {
-
-    <div class="feedback-message error-message" role="alert">
-
-      <span class="feedback-icon" aria-hidden="true">
-        !
-      </span>
-
-      <div>
-        <strong>Unable to continue</strong>
-        <p>{{ errorMessage }}</p>
-      </div>
-
-    </div>
+    <app-inline-feedback
+      kind="error"
+      title="Unable to continue"
+      [message]="errorMessage"
+      announcementPriority="polite" />
 
     }
 

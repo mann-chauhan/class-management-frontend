@@ -16,6 +16,8 @@ import {
 import {
   TeacherAssignmentService
 } from '../services/teacher-assignment.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 
 interface AssignmentSubjectGroup {
@@ -53,7 +55,8 @@ interface TeacherAssignmentGroup {
 
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    InlineFeedbackComponent
   ],
 
   templateUrl: './teacher-assignment-list.html',
@@ -70,6 +73,9 @@ export class TeacherAssignmentList implements OnInit {
 
   private readonly cdr =
     inject(ChangeDetectorRef);
+
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
 
   // =========================================================
@@ -89,8 +95,6 @@ export class TeacherAssignmentList implements OnInit {
   deleting = false;
 
   errorMessage = '';
-
-  successMessage = '';
 
 
   // =========================================================
@@ -763,7 +767,7 @@ export class TeacherAssignmentList implements OnInit {
       )
       .subscribe({
 
-        next: () => {
+        next: response => {
 
           this.allAssignments =
             this.allAssignments.filter(
@@ -781,8 +785,10 @@ export class TeacherAssignmentList implements OnInit {
 
           this.deleting = false;
 
-          this.successMessage =
-            'Teacher assignment deleted successfully.';
+          this.feedbackService.show({
+            kind: 'success',
+            message: response.message || 'Teacher assignment deleted successfully.'
+          });
 
 
           this.buildTeacherGroups();
@@ -795,11 +801,6 @@ export class TeacherAssignmentList implements OnInit {
 
 
         error: (error) => {
-
-          console.error(
-            'Failed to delete teacher assignment:'
-          );
-
           this.deleting = false;
 
           this.errorMessage =

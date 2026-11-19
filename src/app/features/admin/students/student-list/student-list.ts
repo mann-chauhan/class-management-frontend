@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { StudentImportComponent } from '../student-import/student-import';
 import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 
@@ -23,8 +24,15 @@ import { StudentQuickViewComponent } from '../../../../shared/components/student
 import { Student } from '../models/student.model';
 import {
   BulkUpdateStudentRequest,
+  BulkDeleteStudentsResponse,
   StudentService
 } from '../services/student.service';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import {
+  PartialFeedbackInput,
+  getPartialFeedbackStatus
+} from '../../../../core/models/action-feedback.model';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 import { AcademicYearService } from '../../academic/academic-years/services/academic-year.service';
 import { AcademicYear } from '../../academic/academic-years/academic-year.model';
@@ -70,6 +78,11 @@ interface StudentListRow extends Student {
   attendancePercentage: number;
 }
 
+type BulkValidationResult =
+  | { kind: 'complete' }
+  | { kind: 'partial'; partial: PartialFeedbackInput }
+  | { kind: 'invalid' };
+
 @Component({
   selector: 'app-student-list',
   standalone: true,
@@ -82,7 +95,8 @@ imports: [
   ConfirmationDialogComponent,
   StudentQuickViewComponent,
   StudentForm,
-  StudentImportComponent
+  StudentImportComponent,
+  InlineFeedbackComponent
 ],
   templateUrl: './student-list.html',
   styleUrl: './student-list.scss'
@@ -102,6 +116,7 @@ export class StudentList implements OnInit {
   private readonly boardMediumService = inject(BoardMediumService);
   private readonly attendanceService = inject(AttendanceService);
   private readonly studentFeeService = inject(StudentFeeService);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   editStudentId: number | null = null;
   editPopupOpen = false;
@@ -179,10 +194,14 @@ bulkEditableFields = [
   bulkDeleteConfirmationText = '';
   bulkDeleteError = '';
   pendingBulkDeleteIds: number[] = [];
+  bulkEditError = '';
+
+  bulkFeedbackMessage = '';
+  bulkFeedbackPartial?: PartialFeedbackInput;
 
   loading = false;
   errorMessage = '';
-  successMessage = '';
+  importSuccessMessage = '';
 
   search = '';
 
@@ -226,6 +245,8 @@ bulkEditableFields = [
   confirmationTitle = '';
   confirmationMessage = '';
   confirmationConfirmLabel = 'Confirm';
+  confirmationCancelLabel = 'Cancel';
+  confirmationSubmitting = false;
 
   pendingStudent: Student | null = null;
   pendingAction: 'status' | 'delete' | null = null;
@@ -969,6 +990,7 @@ openBulkDelete(): void {
   this.pendingBulkDeleteIds = [...this.selectedStudentIds];
   this.bulkDeleteConfirmationText = '';
   this.bulkDeleteError = '';
+  this.clearBulkFeedback();
   this.bulkDeleteOpen = true;
 }
 
@@ -995,33 +1017,57 @@ confirmBulkDelete(): void {
   this.studentService.bulkDeleteStudents({
     studentIds,
     deleteLinkedData: true
-  }).subscribe({
-    next: response => {
-      const remainingTotal = Math.max(
-        0,
-        this.totalElements - response.data.deletedCount
-      );
-      const lastPage = Math.max(
-        0,
-        Math.ceil(remainingTotal / this.size) - 1
-      );
-
-      this.page = Math.min(this.page, lastPage);
+  }).pipe(
+    finalize(() => {
       this.bulkDeleteSubmitting = false;
-      this.bulkDeleteOpen = false;
-      this.bulkDeleteConfirmationText = '';
-      this.pendingBulkDeleteIds = [];
-      this.selectedStudentIds = [];
-      this.bulkSelectionMode = false;
-      this.successMessage = response.message;
+      this.cdr.detectChanges();
+    })
+  ).subscribe({
+    next: response => {
+      const result = response?.success === false
+        ? { kind: 'invalid' as const }
+        : this.validateBulkDeleteResponse(response?.data, studentIds);
+
+      if (result.kind === 'complete') {
+        const remainingTotal = Math.max(0, this.totalElements - studentIds.length);
+        const lastPage = Math.max(0, Math.ceil(remainingTotal / this.size) - 1);
+
+        this.page = Math.min(this.page, lastPage);
+        this.closeCompletedBulkDelete();
+        this.feedbackService.show({
+          kind: 'success',
+          message: `${studentIds.length} students deleted successfully.`
+        });
+        this.loadStudents();
+        return;
+      }
+
+      if (result.kind === 'partial') {
+        this.setBulkFeedback(
+          'Some selected student deletions could not be confirmed. The list was refreshed.',
+          result.partial
+        );
+        this.feedbackService.show({
+          kind: 'warning',
+          message: 'Some selected student deletions could not be confirmed.'
+        });
+        this.closeUnconfirmedBulkDelete();
+        this.loadStudents();
+        return;
+      }
+
+      this.setBulkFeedback(
+        'The student deletion result could not be confirmed. The list was refreshed.'
+      );
+      this.feedbackService.show({
+        kind: 'warning',
+        message: 'The student deletion result could not be confirmed.'
+      });
+      this.closeUnconfirmedBulkDelete();
       this.loadStudents();
     },
-    error: error => {
-      this.bulkDeleteSubmitting = false;
+    error: () => {
       this.bulkDeleteError =
-        error?.error?.message ||
-        error?.error?.error ||
-        error?.message ||
         'Failed to delete the selected students. Please try again.';
       this.cdr.detectChanges();
     }
@@ -1035,6 +1081,8 @@ openBulkEdit(): void {
 
   this.bulkEditStep = 'edit';
   this.bulkEditOpen = true;
+  this.bulkEditError = '';
+  this.clearBulkFeedback();
   this.bulkSelectedFields.clear();
 
   this.resetBulkEditValues();
@@ -1091,6 +1139,7 @@ closeBulkEdit(): void {
 
   this.bulkEditOpen = false;
   this.bulkEditStep = 'edit';
+  this.bulkEditError = '';
 }
 
 toggleBulkField(field: string): void {
@@ -1254,6 +1303,10 @@ previewBulkEdit(): void {
 }
 
 saveBulkEdit(): void {
+  if (this.bulkUpdating || !this.selectedStudentIds.length) {
+    return;
+  }
+
   const selectedFields = Array.from(this.bulkSelectedFields).filter(
     field => this.bulkEditableFields.some(
       editableField => editableField.key === field
@@ -1302,26 +1355,205 @@ saveBulkEdit(): void {
   }
 
   this.bulkUpdating = true;
-  this.errorMessage = '';
+  this.bulkEditError = '';
 
   this.studentService
     .bulkUpdateStudents(request)
+    .pipe(
+      finalize(() => {
+        this.bulkUpdating = false;
+        this.cdr.detectChanges();
+      })
+    )
     .subscribe({
       next: response => {
-        this.bulkUpdating = false;
-        this.successMessage = response.message;
-        this.closeBulkEdit();
-        this.selectedStudentIds = [];
+        const result = response?.success === false
+          ? { kind: 'invalid' as const }
+          : this.validateBulkUpdateResponse(response?.data, request.studentIds);
+
+        if (result.kind === 'complete') {
+          this.closeCompletedBulkEdit();
+          this.feedbackService.show({
+            kind: 'success',
+            message: `${request.studentIds.length} students updated successfully.`
+          });
+          this.loadStudents();
+          return;
+        }
+
+        if (result.kind === 'partial') {
+          this.setBulkFeedback(
+            'Some selected student updates could not be confirmed. The list was refreshed.',
+            result.partial
+          );
+          this.feedbackService.show({
+            kind: 'warning',
+            message: 'Some selected student updates could not be confirmed.'
+          });
+          this.closeUnconfirmedBulkEdit();
+          this.loadStudents();
+          return;
+        }
+
+        this.setBulkFeedback(
+          'The student update result could not be confirmed. The list was refreshed.'
+        );
+        this.feedbackService.show({
+          kind: 'warning',
+          message: 'The student update result could not be confirmed.'
+        });
+        this.closeUnconfirmedBulkEdit();
         this.loadStudents();
       },
-      error: error => {
-        this.bulkUpdating = false;
-        this.errorMessage =
-          error?.error?.message ??
+      error: () => {
+        this.bulkEditError =
           'Failed to update students. Please try again.';
         this.cdr.detectChanges();
       }
     });
+}
+
+private validateBulkUpdateResponse(
+  data: unknown,
+  submittedIds: number[]
+): BulkValidationResult {
+  if (!Array.isArray(data)) {
+    return { kind: 'invalid' };
+  }
+
+  const requestedIds = new Set(submittedIds);
+  if (requestedIds.size !== submittedIds.length) {
+    return { kind: 'invalid' };
+  }
+
+  const returnedIds: number[] = [];
+  const returnedIdSet = new Set<number>();
+
+  for (const item of data) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return { kind: 'invalid' };
+    }
+
+    const idValue = (item as { id?: unknown }).id;
+    if (typeof idValue !== 'number'
+      || !Number.isInteger(idValue)
+      || !requestedIds.has(idValue)
+      || returnedIdSet.has(idValue)) {
+      return { kind: 'invalid' };
+    }
+
+    const id = idValue;
+    returnedIds.push(id);
+    returnedIdSet.add(id);
+  }
+
+  if (returnedIds.length === submittedIds.length) {
+    return { kind: 'complete' };
+  }
+
+  const partial: PartialFeedbackInput = {
+    requested: submittedIds.length,
+    succeeded: returnedIds.length,
+    unknown: submittedIds.length - returnedIds.length,
+    retryability: 'unknown'
+  };
+
+  return getPartialFeedbackStatus(partial) === 'invalid'
+    ? { kind: 'invalid' }
+    : { kind: 'partial', partial };
+}
+
+private validateBulkDeleteResponse(
+  data: unknown,
+  submittedIds: number[]
+): BulkValidationResult {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return { kind: 'invalid' };
+  }
+
+  const result = data as Partial<BulkDeleteStudentsResponse>;
+  if (typeof result.deletedCount !== 'number'
+    || !Number.isInteger(result.deletedCount)
+    || result.deletedCount < 0
+    || !Array.isArray(result.deletedStudentIds)) {
+    return { kind: 'invalid' };
+  }
+
+  const requestedIds = new Set(submittedIds);
+  if (requestedIds.size !== submittedIds.length) {
+    return { kind: 'invalid' };
+  }
+
+  const deletedCount = result.deletedCount;
+  const deletedIds = result.deletedStudentIds;
+  if (typeof deletedCount !== 'number' || !Number.isInteger(deletedCount) || deletedCount < 0
+    || !Array.isArray(deletedIds)) {
+    return { kind: 'invalid' };
+  }
+  const deletedIdSet = new Set<number>();
+  for (const id of deletedIds) {
+    if (!Number.isInteger(id) || !requestedIds.has(id) || deletedIdSet.has(id)) {
+      return { kind: 'invalid' };
+    }
+    deletedIdSet.add(id);
+  }
+
+  if (deletedCount !== deletedIds.length) {
+    return { kind: 'invalid' };
+  }
+
+  if (deletedIds.length === submittedIds.length) {
+    return { kind: 'complete' };
+  }
+
+  const partial: PartialFeedbackInput = {
+    requested: submittedIds.length,
+    succeeded: deletedIds.length,
+    unknown: submittedIds.length - deletedIds.length,
+    retryability: 'unknown'
+  };
+
+  return getPartialFeedbackStatus(partial) === 'invalid'
+    ? { kind: 'invalid' }
+    : { kind: 'partial', partial };
+}
+
+private setBulkFeedback(
+  message: string,
+  partial?: PartialFeedbackInput
+): void {
+  this.bulkFeedbackMessage = message;
+  this.bulkFeedbackPartial = partial;
+}
+
+private clearBulkFeedback(): void {
+  this.bulkFeedbackMessage = '';
+  this.bulkFeedbackPartial = undefined;
+}
+
+private closeCompletedBulkDelete(): void {
+  this.bulkDeleteOpen = false;
+  this.bulkDeleteConfirmationText = '';
+  this.bulkDeleteError = '';
+  this.pendingBulkDeleteIds = [];
+  this.selectedStudentIds = [];
+  this.bulkSelectionMode = false;
+}
+
+private closeUnconfirmedBulkDelete(): void {
+  this.closeCompletedBulkDelete();
+}
+
+private closeCompletedBulkEdit(): void {
+  this.bulkEditOpen = false;
+  this.bulkEditStep = 'edit';
+  this.bulkEditError = '';
+  this.selectedStudentIds = [];
+  this.bulkSelectionMode = false;
+}
+
+private closeUnconfirmedBulkEdit(): void {
+  this.closeCompletedBulkEdit();
 }
 
   // =========================================================
@@ -1362,6 +1594,10 @@ saveBulkEdit(): void {
   // =========================================================
 
   toggleStatus(student: Student): void {
+    if (this.confirmationSubmitting) {
+      return;
+    }
+
     const newStatus =
       !student.isActive;
 
@@ -1395,6 +1631,10 @@ saveBulkEdit(): void {
   // =========================================================
 
   deleteStudent(student: Student): void {
+    if (this.confirmationSubmitting) {
+      return;
+    }
+
     this.pendingStudent = student;
     this.pendingAction = 'delete';
     this.pendingNewStatus = null;
@@ -1419,11 +1659,9 @@ saveBulkEdit(): void {
     const student = this.pendingStudent;
     const action = this.pendingAction;
 
-    if (!student || !action) {
+    if (!student || !action || this.confirmationSubmitting) {
       return;
     }
-
-    this.showConfirmationDialog = false;
 
     if (action === 'status') {
       const newStatus =
@@ -1433,28 +1671,47 @@ saveBulkEdit(): void {
         return;
       }
 
+      this.confirmationSubmitting = true;
+      this.confirmationConfirmLabel = 'Updating...';
+      this.confirmationCancelLabel = 'Please wait...';
+
       this.studentService
         .updateStatus(
           student.id,
           newStatus
         )
+        .pipe(
+          finalize(() => {
+            this.confirmationSubmitting = false;
+            if (this.showConfirmationDialog) {
+              this.confirmationConfirmLabel = newStatus ? 'Activate' : 'Deactivate';
+              this.confirmationCancelLabel = 'Cancel';
+            }
+            this.cdr.detectChanges();
+          })
+        )
         .subscribe({
           next: () => {
-
-            // Update screen immediately
             student.isActive =
               newStatus;
+
+            this.feedbackService.show({
+              kind: 'success',
+              message: newStatus
+                ? 'Student activated successfully.'
+                : 'Student deactivated successfully.'
+            });
+
+            this.clearConfirmation();
 
             this.cdr.detectChanges();
           },
 
-          error: (error) => {
-            console.error(
-              'Failed to update student status:'
-            );
-
+          error: () => {
             this.errorMessage =
               'Failed to update student status. Please try again.';
+
+            this.clearConfirmation();
 
             this.cdr.detectChanges();
           }
@@ -1462,32 +1719,46 @@ saveBulkEdit(): void {
     }
 
     if (action === 'delete') {
+      this.confirmationSubmitting = true;
+      this.confirmationConfirmLabel = 'Deleting...';
+      this.confirmationCancelLabel = 'Please wait...';
+
       this.studentService
         .deleteStudent(student.id)
+        .pipe(
+          finalize(() => {
+            this.confirmationSubmitting = false;
+            if (this.showConfirmationDialog) {
+              this.confirmationConfirmLabel = 'Delete';
+              this.confirmationCancelLabel = 'Cancel';
+            }
+            this.cdr.detectChanges();
+          })
+        )
         .subscribe({
           next: () => {
-            this.loadStudents();
+            this.students = this.students.filter(item => item.id !== student.id);
+            this.totalElements = Math.max(0, this.totalElements - 1);
+
+            this.feedbackService.show({
+              kind: 'success',
+              message: 'Student deleted successfully.'
+            });
+
+            this.clearConfirmation();
+            this.cdr.detectChanges();
           },
 
-          error: (error) => {
-            console.error(
-              'Failed to delete student:'
-            );
-
+          error: () => {
             this.errorMessage =
-              error?.error?.message ||
-              error?.error?.error ||
-              error?.message ||
               'Failed to delete student. Please try again.';
+
+            this.clearConfirmation();
 
             this.cdr.detectChanges();
           }
         });
     }
-
-    this.pendingStudent = null;
-    this.pendingAction = null;
-    this.pendingNewStatus = null;
   }
 
   // =========================================================
@@ -1495,11 +1766,22 @@ saveBulkEdit(): void {
   // =========================================================
 
   cancelConfirmation(): void {
+    if (this.confirmationSubmitting) {
+      return;
+    }
+
+    this.clearConfirmation();
+  }
+
+  private clearConfirmation(): void {
     this.showConfirmationDialog = false;
 
     this.pendingStudent = null;
     this.pendingAction = null;
     this.pendingNewStatus = null;
+    this.confirmationSubmitting = false;
+    this.confirmationConfirmLabel = 'Confirm';
+    this.confirmationCancelLabel = 'Cancel';
   }
 
   // =========================================================
@@ -1829,6 +2111,13 @@ closeStudentImport(): void {
 
 onStudentsImported(): void {
   this.loadStudents();
+  this.importSuccessMessage = 'Students imported successfully.';
+  this.cdr.detectChanges();
+
+  setTimeout(() => {
+    this.importSuccessMessage = '';
+    this.cdr.detectChanges();
+  }, 3000);
 }
 
   onStudentCreated(): void {
@@ -1836,15 +2125,6 @@ onStudentsImported(): void {
 
     this.page = 0;
     this.loadStudents();
-
-    this.successMessage = 'Student created successfully.';
-
-    this.cdr.detectChanges();
-
-    setTimeout(() => {
-      this.successMessage = '';
-      this.cdr.detectChanges();
-    }, 3000);
   }
 
   closeEditStudent(): void {

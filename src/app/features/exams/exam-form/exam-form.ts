@@ -17,6 +17,8 @@ import { TeacherAttendanceAssignment } from '../../teacher/attendance/models/tea
 
 import { ExamService } from '../services/exam.service';
 import { ExamHeroComponent } from '../shared/exam-hero/exam-hero';
+import { ActionFeedbackService } from '../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../shared/components/inline-feedback/inline-feedback.component';
 import {
   AdminExamRequest,
   ApiResponse,
@@ -27,7 +29,7 @@ import {
 @Component({
   selector: 'app-exam-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, ExamHeroComponent],
+  imports: [CommonModule, FormsModule, ExamHeroComponent, InlineFeedbackComponent],
   templateUrl: './exam-form.html',
   styleUrl: './exam-form.scss'
 })
@@ -42,6 +44,7 @@ export class ExamFormComponent implements OnInit {
   private readonly sectionService = inject(SectionService);
   private readonly subjectService = inject(SubjectService);
   private readonly teacherAttendance = inject(TeacherAttendance);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   readonly role = this.route.snapshot.data['examRole'] as 'ADMIN' | 'TEACHER';
   readonly baseRoute = this.role === 'ADMIN' ? '/admin/exams' : '/teacher/exams';
@@ -54,6 +57,8 @@ export class ExamFormComponent implements OnInit {
   loading = true;
   saving = false;
   errorMessage = '';
+  loadingError = '';
+  private loadingStage: 'options' | 'detail' = 'options';
 
   academicYears: AcademicYear[] = [];
   allClasses: AcademicClass[] = [];
@@ -144,6 +149,8 @@ set formDescription(value: string | null) {
   }
 
   private loadAdminOptions(): void {
+    this.loadingStage = 'options';
+    this.loadingError = '';
     forkJoin({
       years: this.academicYearService.getAll(),
       classes: this.classService.getClasses(),
@@ -167,8 +174,7 @@ set formDescription(value: string | null) {
         }
       },
       error: error => {
-        this.errorMessage =
-          error?.error?.message || 'Could not load academic options.';
+        this.loadingError = 'Unable to load exam options. Please try again.';
         this.loading = false;
         this.cdr.markForCheck();
       }
@@ -176,6 +182,8 @@ set formDescription(value: string | null) {
   }
 
   private loadAdminExam(id: number): void {
+    this.loadingStage = 'detail';
+    this.loadingError = '';
     this.examService.getAdminExam(id).subscribe({
       next: response => {
         const exam = response.data;
@@ -217,12 +225,15 @@ set formDescription(value: string | null) {
         });
       },
       error: error => this.finishWithError(
-        error?.error?.message || 'Could not load the exam.'
+        'Unable to load the exam. Please try again.'
       )
     });
   }
 
   private loadTeacherAssignments(): void {
+    this.loadingStage = 'options';
+    this.loadingError = '';
+    this.loading = true;
     this.teacherAttendance.getMyTeacherAssignments().subscribe({
       next: response => {
         this.teacherAssignments = response.data ?? [];
@@ -234,14 +245,15 @@ set formDescription(value: string | null) {
         }
       },
       error: error => {
-        this.finishWithError(
-          error?.error?.message || 'Could not load your teaching assignments.'
-        );
+        this.finishWithError('Unable to load your teaching assignments. Please try again.');
       }
     });
   }
 
   private loadTeacherExam(id: number): void {
+    this.loadingStage = 'detail';
+    this.loadingError = '';
+    this.loading = true;
     this.examService.getTeacherExam(id).subscribe({
       next: response => {
         const exam = response.data;
@@ -273,7 +285,7 @@ set formDescription(value: string | null) {
         this.cdr.markForCheck();
       },
       error: error => this.finishWithError(
-        error?.error?.message || 'Could not load the exam.'
+        'Unable to load the exam. Please try again.'
       )
     });
   }
@@ -311,6 +323,10 @@ set formDescription(value: string | null) {
   }
 
   save(): void {
+    if (this.saving) {
+      return;
+    }
+
     this.errorMessage = '';
 
 
@@ -357,13 +373,20 @@ if (
     this.saving = true;
 
     request$.subscribe({
-      next: () => {
+      next: response => {
         this.saving = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: response?.message || (this.isEditMode
+            ? 'Exam updated successfully.'
+            : 'Exam created successfully.')
+        });
         this.router.navigate([this.baseRoute]);
       },
-      error: error => {
-        this.errorMessage =
-          error?.error?.message || 'Could not save the exam. Please try again.';
+      error: () => {
+        this.errorMessage = this.isEditMode
+          ? 'Unable to update the exam. Please try again.'
+          : 'Unable to create the exam. Please try again.';
         this.saving = false;
         this.cdr.markForCheck();
       }
@@ -407,9 +430,26 @@ if (
   }
 
   private finishWithError(message: string): void {
-    this.errorMessage = message;
+    this.loadingError = message;
     this.loading = false;
     this.cdr.markForCheck();
+  }
+
+  retryLoading(): void {
+    if (this.loadingStage === 'detail' && this.examId) {
+      if (this.isAdmin) {
+        this.loadAdminExam(Number(this.examId));
+      } else {
+        this.loadTeacherExam(Number(this.examId));
+      }
+      return;
+    }
+
+    if (this.isAdmin) {
+      this.loadAdminOptions();
+    } else {
+      this.loadTeacherAssignments();
+    }
   }
 
   private localToday(): string {

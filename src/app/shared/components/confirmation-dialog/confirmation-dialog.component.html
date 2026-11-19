@@ -65,6 +65,8 @@
 
         </p>
 
+        <ng-content></ng-content>
+
       </div>
 
 
@@ -74,9 +76,10 @@
         <button
           type="button"
           class="cancel-button"
+          [disabled]="busy"
           (click)="onCancel()">
 
-          {{ cancelLabel }}
+          {{ busy ? busyLabel : cancelLabel }}
 
         </button>
 
@@ -84,6 +87,7 @@
         <button
           type="button"
           class="confirm-button"
+          [disabled]="busy"
           [class.confirm-button-normal]="!danger"
           (click)="onConfirm()">
 

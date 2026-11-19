@@ -19,6 +19,8 @@ import { ErrorStateComponent } from '../../../shared/components/error-state/erro
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { formatLeaveAuditTimestamp } from '../utils/leave-date-time';
+import { ActionFeedbackService } from '../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-teacher-leave-review',
@@ -33,7 +35,8 @@ import { formatLeaveAuditTimestamp } from '../utils/leave-date-time';
     EmptyStateComponent,
     ErrorStateComponent,
     PaginationComponent,
-    ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    InlineFeedbackComponent
   ],
   templateUrl: './teacher-leave-review.component.html',
   styleUrl: './teacher-leave-review.component.scss'
@@ -43,6 +46,7 @@ export class TeacherLeaveReviewComponent implements OnInit {
   private readonly service = inject(LeaveService);
   private readonly permissionService = inject(PermissionService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   requests: LeaveRequest[] = [];
   selected: LeaveRequest | null = null;
@@ -58,7 +62,6 @@ export class TeacherLeaveReviewComponent implements OnInit {
   permissionsError = '';
   detailError = '';
   decisionError = '';
-  success = '';
   detailOpen = false;
   confirmationVisible = false;
   pendingDecision: 'approve' | 'reject' | null = null;
@@ -254,7 +257,10 @@ export class TeacherLeaveReviewComponent implements OnInit {
 
     operation.subscribe({
       next: response => {
-        this.success = response.message || `Leave request ${decision}d.`;
+        this.feedbackService.show({
+          kind: 'success',
+          message: response.message || `Leave request ${decision}d.`,
+        });
         this.selected = response.data;
         this.processingId = null;
         this.comment = '';
@@ -262,7 +268,7 @@ export class TeacherLeaveReviewComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: error => {
-        this.decisionError = this.message(error, 'Unable to update the leave request.');
+        this.decisionError = this.mutationMessage(error, 'Unable to update the leave request.');
         this.processingId = null;
         this.cdr.detectChanges();
       }
@@ -308,5 +314,9 @@ export class TeacherLeaveReviewComponent implements OnInit {
 
   private message(error: any, fallback: string): string {
     return error?.error?.message || error?.message || fallback;
+  }
+
+  private mutationMessage(error: any, fallback: string): string {
+    return error?.error?.message || fallback;
   }
 }

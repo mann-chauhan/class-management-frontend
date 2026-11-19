@@ -27,13 +27,16 @@ import { Subject } from '../../academic/subjects/subject.model';
 
 import { TeacherService } from '../../teachers/services/teacher.service';
 import { Teacher } from '../../teachers/models/teacher.model';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-assignment-form',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    InlineFeedbackComponent
   ],
   templateUrl: './assignment-form.html',
   styleUrl: './assignment-form.scss'
@@ -66,6 +69,9 @@ export class AssignmentForm implements OnInit {
 
   private readonly cdr =
     inject(ChangeDetectorRef);
+
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
 
   // =========================
@@ -124,8 +130,6 @@ export class AssignmentForm implements OnInit {
   saving = false;
 
   errorMessage = '';
-
-  successMessage = '';
 
 
   // =========================
@@ -490,9 +494,11 @@ export class AssignmentForm implements OnInit {
 
   saveAssignment(): void {
 
-    this.errorMessage = '';
+    if (this.saving) {
+      return;
+    }
 
-    this.successMessage = '';
+    this.errorMessage = '';
 
     if (!this.isFormValid()) {
       return;
@@ -548,9 +554,15 @@ export class AssignmentForm implements OnInit {
         )
         .subscribe({
 
-          next: () => {
+          next: (response) => {
 
             this.saving = false;
+
+            this.feedbackService.show({
+              kind: 'success',
+              message: response.message || 'Assignment updated successfully.',
+              persistAcrossNavigation: true
+            });
 
             this.router.navigate([
               '/admin/assignments'
@@ -558,12 +570,6 @@ export class AssignmentForm implements OnInit {
           },
 
           error: (error) => {
-
-            console.error(
-              'Failed to update assignment:',
-              error
-            );
-
             this.saving = false;
 
             this.errorMessage =
@@ -582,9 +588,15 @@ export class AssignmentForm implements OnInit {
       .createAssignment(request)
       .subscribe({
 
-        next: () => {
+        next: (response) => {
 
           this.saving = false;
+
+          this.feedbackService.show({
+            kind: 'success',
+            message: response.message || 'Assignment created successfully.',
+            persistAcrossNavigation: true
+          });
 
           this.router.navigate([
             '/admin/assignments'
@@ -592,12 +604,6 @@ export class AssignmentForm implements OnInit {
         },
 
         error: (error) => {
-
-          console.error(
-            'Failed to create assignment:',
-            error
-          );
-
           this.saving = false;
 
           this.errorMessage =

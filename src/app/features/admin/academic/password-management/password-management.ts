@@ -2,10 +2,13 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectorRef,
   Component,
+  OnDestroy,
   OnInit,
   inject
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 import { PasswordManagementService } from './services/password-management.service';
 import {
@@ -18,18 +21,22 @@ import {
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    InlineFeedbackComponent
   ],
   templateUrl: './password-management.html',
   styleUrl: './password-management.scss'
 })
-export class PasswordManagementComponent implements OnInit {
+export class PasswordManagementComponent implements OnInit, OnDestroy {
 
   private readonly passwordManagementService =
     inject(PasswordManagementService);
 
   private readonly cdr =
     inject(ChangeDetectorRef);
+
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
   /* STATE */
 
@@ -39,7 +46,7 @@ export class PasswordManagementComponent implements OnInit {
 
 onSearchChange(): void {
   this.currentPage = 1;
-  this.visiblePasswordUserId = null;
+  this.clearTemporaryPasswords();
 }
 
   roleFilter: 'ALL' | 'STUDENT' | 'TEACHER' = 'ALL';
@@ -49,7 +56,7 @@ onRoleFilterChange(
 ): void {
   this.roleFilter = role;
   this.currentPage = 1;
-  this.visiblePasswordUserId = null;
+  this.clearTemporaryPasswords();
 }
 
   /* PAGINATION */
@@ -106,7 +113,7 @@ goToPage(page: number): void {
   }
 
   this.currentPage = page;
-  this.visiblePasswordUserId = null;
+  this.clearTemporaryPasswords();
 }
 
 previousPage(): void {
@@ -119,12 +126,14 @@ nextPage(): void {
 
 onPageSizeChange(): void {
   this.currentPage = 1;
-  this.visiblePasswordUserId = null;
+  this.clearTemporaryPasswords();
 }
 
   loading = false;
 
-  errorMessage = '';
+  loadError = '';
+  resetError = '';
+  resetErrorUserId: number | null = null;
 
   resettingUserId: number | null = null;
 
@@ -151,23 +160,22 @@ onPageSizeChange(): void {
 
   loadUsers(): void {
     this.loading = true;
-    this.errorMessage = '';
+    this.loadError = '';
+    this.clearTemporaryPasswords();
 
     this.passwordManagementService.getUsers().subscribe({
       next: (response) => {
         this.users = response.data ?? [];
+        this.loadError = '';
 
         this.loading = false;
 
         this.cdr.markForCheck();
       },
 
-      error: (error) => {
-        console.error(error);
-
-        this.errorMessage =
-          error?.error?.message ||
-          'Failed to load password management users.';
+      error: () => {
+        this.loadError =
+          'Unable to load student and teacher accounts. Please retry.';
 
         this.loading = false;
 
@@ -238,17 +246,35 @@ onPageSizeChange(): void {
     }
 
     this.resettingUserId = user.userId;
-
-    this.errorMessage = '';
+    this.resetError = '';
+    this.resetErrorUserId = null;
+    this.temporaryPasswords.delete(user.userId);
+    if (this.visiblePasswordUserId === user.userId) {
+      this.visiblePasswordUserId = null;
+    }
 
     this.passwordManagementService
       .resetPassword(user.userId)
       .subscribe({
 
         next: (response) => {
+          const result = response?.data as PasswordResetResponse | null | undefined;
 
-          const result: PasswordResetResponse =
-            response.data;
+          if (
+            !result
+            || typeof result !== 'object'
+            || typeof result.userId !== 'number'
+            || result.userId !== user.userId
+            || typeof result.temporaryPassword !== 'string'
+            || result.temporaryPassword.trim().length === 0
+          ) {
+            this.resetError =
+              'The reset response could not be validated. Verify the reset status before attempting another reset.';
+            this.resetErrorUserId = user.userId;
+            this.resettingUserId = null;
+            this.cdr.markForCheck();
+            return;
+          }
 
           this.temporaryPasswords.set(
             result.userId,
@@ -261,24 +287,39 @@ onPageSizeChange(): void {
            */
           this.visiblePasswordUserId = null;
 
+          this.resetError = '';
+          this.resetErrorUserId = null;
+
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Temporary password generated successfully.'
+          });
+
           this.resettingUserId = null;
 
           this.cdr.markForCheck();
         },
 
-        error: (error) => {
-
-          console.error(error);
-
-          this.errorMessage =
-            error?.error?.message ||
-            'Failed to reset password.';
+        error: () => {
+          this.resetError = 'Unable to reset this password. Please try again.';
+          this.resetErrorUserId = user.userId;
 
           this.resettingUserId = null;
 
           this.cdr.markForCheck();
         }
       });
+  }
+
+  ngOnDestroy(): void {
+    this.clearTemporaryPasswords();
+    this.resetError = '';
+    this.resetErrorUserId = null;
+  }
+
+  private clearTemporaryPasswords(): void {
+    this.temporaryPasswords.clear();
+    this.visiblePasswordUserId = null;
   }
 
 

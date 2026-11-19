@@ -23,6 +23,9 @@ import {
   CreateFeeStructureRequest
 } from '../models/fee-structure.model';
 
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
+
 
 @Component({
   selector: 'app-fee-structure-create',
@@ -30,7 +33,8 @@ import {
 
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    InlineFeedbackComponent
   ],
 
   templateUrl: './fee-structure-create.html',
@@ -67,6 +71,9 @@ export class FeeStructureCreateComponent implements OnInit {
 
   private readonly cdr =
     inject(ChangeDetectorRef);
+
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
 
   // =====================================================
@@ -346,7 +353,7 @@ export class FeeStructureCreateComponent implements OnInit {
       .create(request)
       .subscribe({
 
-        next: () => {
+        next: (response: any) => {
 
           this.saving = false;
 
@@ -362,6 +369,12 @@ export class FeeStructureCreateComponent implements OnInit {
             return;
 
           }
+
+          this.feedbackService.show({
+            kind: 'success',
+            message: response?.message || 'Fee structure created successfully.',
+            persistAcrossNavigation: true
+          });
 
 
           // =================================================

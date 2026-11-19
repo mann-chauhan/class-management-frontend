@@ -19,6 +19,8 @@ import {
 
 import { TeacherRoleAssignmentService } from '../services/teacher-role-assignment.service';
 import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-teacher-role-assignment-list',
@@ -29,6 +31,7 @@ import { ConfirmationDialogComponent } from '../../../../shared/components/confi
     TeacherRoleAssignmentForm,
     ConfirmationDialogComponent,
     TeacherRoleAssignmentView,
+    InlineFeedbackComponent,
   
   ],
   templateUrl: './teacher-role-assignment-list.html',
@@ -43,6 +46,7 @@ export class TeacherRoleAssignmentList implements OnInit {
   private readonly router = inject(Router);
 
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   
 
@@ -64,7 +68,6 @@ export class TeacherRoleAssignmentList implements OnInit {
 
   errorMessage = '';
 
-  successMessage = '';
 
   searchTerm = '';
 
@@ -360,19 +363,15 @@ editAssignment(
 
     this.selectedTeacherId = null;
 
-    this.successMessage = wasEdit
-      ? 'Teacher role assignment updated successfully.'
-      : 'Teacher role assigned successfully.';
+    this.feedbackService.show({
+      kind: 'success',
+      message: wasEdit
+        ? 'Teacher role assignment updated successfully.'
+        : 'Teacher role assigned successfully.'
+    });
 
     this.loadAssignments();
 
-    window.setTimeout(() => {
-
-      this.successMessage = '';
-
-      this.cdr.detectChanges();
-
-    }, 4000);
   }
 
   // =========================================================
@@ -399,6 +398,8 @@ editAssignment(
     this.showRemoveDialog = false;
 
     this.pendingRemoveTeacherId = null;
+
+    this.errorMessage = '';
   }
 
   confirmRemove(): void {
@@ -429,18 +430,13 @@ editAssignment(
 
           this.pendingRemoveTeacherId = null;
 
-          this.successMessage =
-            'Teacher role assignment removed successfully.';
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Teacher role assignment removed successfully.'
+          });
 
           this.loadAssignments();
 
-          window.setTimeout(() => {
-
-            this.successMessage = '';
-
-            this.cdr.detectChanges();
-
-          }, 4000);
         },
 
         error: (error) => {

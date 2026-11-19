@@ -23,16 +23,24 @@
     </section>
   } @else if (errorMessage) {
     <section class="alert alert-error" role="alert">
-      <p>{{ errorMessage }}</p>
+      <app-inline-feedback
+        kind="error"
+        title="Advertisement settings could not be loaded"
+        [message]="errorMessage"
+        announcementPriority="polite" />
       <button type="button" class="secondary-button" (click)="loadSettings()" [disabled]="saving">
         Retry
       </button>
     </section>
   }
 
-  @if (successMessage) {
-    <section class="alert alert-success" role="status" aria-live="polite">
-      {{ successMessage }}
+  @if (saveErrorMessage) {
+    <section class="alert alert-error" role="alert">
+      <app-inline-feedback
+        kind="error"
+        title="Advertisement settings could not be saved"
+        [message]="saveErrorMessage"
+        announcementPriority="polite" />
     </section>
   }
 

@@ -1,6 +1,7 @@
 import { Component, HostListener, ViewChild, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef } from '@angular/core';
+import { finalize } from 'rxjs';
 import { TeacherService } from '../services/teacher.service';
 import { Teacher } from '../models/teacher.model';
 import { Router } from '@angular/router';
@@ -14,6 +15,8 @@ import {
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
 import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
 import { TeacherForm } from '../teacher-form/teacher-form';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-teacher-list',
@@ -23,7 +26,8 @@ import { TeacherForm } from '../teacher-form/teacher-form';
     DataTableComponent,
     PaginationComponent,
     SearchInputComponent,
-    TeacherForm
+    TeacherForm,
+    InlineFeedbackComponent
   ],
   templateUrl: './teacher-list.html',
   styleUrl: './teacher-list.scss'
@@ -41,6 +45,9 @@ export class TeacherList implements OnInit {
 
   private readonly cdr =
     inject(ChangeDetectorRef);
+
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
 
   @ViewChild(TeacherForm)
   addTeacherForm?: TeacherForm;
@@ -97,9 +104,7 @@ export class TeacherList implements OnInit {
   // =========================================================
 
   errorMessage = '';
-
-  successMessage = '';
-
+  errorTitle = 'Unable to load teachers';
 
   // =========================================================
   // TABLE COLUMNS
@@ -184,8 +189,7 @@ columns: TableColumn[] = [
     this.loading = true;
 
     this.errorMessage = '';
-
-    this.successMessage = '';
+    this.errorTitle = 'Unable to load teachers';
 
     this.cdr.detectChanges();
 
@@ -212,18 +216,11 @@ columns: TableColumn[] = [
 
         },
 
-        error: (error) => {
-
-          console.error(
-            'Failed to load teachers:',
-            error
-          );
+        error: () => {
 
           this.loading = false;
 
-          this.errorMessage =
-            error?.error?.message ||
-            'Failed to load teachers.';
+          this.errorMessage = 'Failed to load teachers.';
 
           this.cdr.detectChanges();
 
@@ -259,7 +256,6 @@ columns: TableColumn[] = [
     }
 
     this.errorMessage = '';
-    this.successMessage = '';
     this.showAddTeacherModal = true;
   }
 
@@ -274,8 +270,6 @@ columns: TableColumn[] = [
   onTeacherCreated(): void {
     this.showAddTeacherModal = false;
     this.loadTeachers();
-    this.successMessage = 'Teacher created successfully.';
-    this.cdr.detectChanges();
   }
 
 
@@ -357,6 +351,10 @@ columns: TableColumn[] = [
     teacher: Teacher
   ): void {
 
+    if (this.statusChanging || this.deleting) {
+      return;
+    }
+
     this.selectedTeacher = teacher;
 
     this.showStatusConfirm = true;
@@ -366,7 +364,7 @@ columns: TableColumn[] = [
 
   confirmStatusChange(): void {
 
-    if (!this.selectedTeacher) {
+    if (!this.selectedTeacher || this.statusChanging) {
 
       return;
 
@@ -384,13 +382,16 @@ columns: TableColumn[] = [
 
     this.errorMessage = '';
 
-    this.successMessage = '';
-
-
     this.teacherService
       .updateStatus(
         teacher.id,
         newStatus
+      )
+      .pipe(
+        finalize(() => {
+          this.statusChanging = false;
+          this.cdr.detectChanges();
+        })
       )
       .subscribe({
 
@@ -399,49 +400,33 @@ columns: TableColumn[] = [
           teacher.isActive =
             response.data.isActive;
 
-          this.statusChanging = false;
-
           this.showStatusConfirm = false;
 
           this.selectedTeacher = null;
 
-          this.successMessage =
-            teacher.isActive
+          this.feedbackService.show({
+            kind: 'success',
+            message: teacher.isActive
               ? 'Teacher activated successfully.'
-              : 'Teacher deactivated successfully.';
+              : 'Teacher deactivated successfully.'
+          });
 
           this.cdr.detectChanges();
-
-
-          setTimeout(() => {
-
-            this.successMessage = '';
-
-            this.cdr.detectChanges();
-
-          }, 2500);
 
         },
 
 
         error: (error) => {
 
-          console.error(
-            'Failed to update teacher status:',
-            error
-          );
-
-          this.statusChanging = false;
-
           this.showStatusConfirm = false;
 
           this.selectedTeacher = null;
 
-          this.errorMessage =
-            this.getBackendErrorMessage(
-              error,
-              'Failed to update teacher status.'
-            );
+          this.errorTitle = 'Unable to update teacher';
+          this.errorMessage = this.getBackendErrorMessage(
+            error,
+            'Failed to update teacher status.'
+          );
 
           this.cdr.detectChanges();
 
@@ -453,6 +438,10 @@ columns: TableColumn[] = [
 
 
   cancelStatusChange(): void {
+
+    if (this.statusChanging) {
+      return;
+    }
 
     this.showStatusConfirm = false;
 
@@ -476,6 +465,7 @@ columns: TableColumn[] = [
 
     if (teacher.isActive) {
 
+      this.errorTitle = 'Unable to delete teacher';
       this.errorMessage =
         'Active teacher cannot be deleted. Please deactivate the teacher first.';
 
@@ -487,8 +477,6 @@ columns: TableColumn[] = [
 
 
     this.errorMessage = '';
-
-    this.successMessage = '';
 
     this.selectedDeleteTeacher =
       teacher;
@@ -504,7 +492,7 @@ columns: TableColumn[] = [
 
   confirmDelete(): void {
 
-    if (!this.selectedDeleteTeacher) {
+    if (!this.selectedDeleteTeacher || this.deleting) {
 
       return;
 
@@ -522,6 +510,7 @@ columns: TableColumn[] = [
 
       this.selectedDeleteTeacher = null;
 
+      this.errorTitle = 'Unable to delete teacher';
       this.errorMessage =
         'Active teacher cannot be deleted. Please deactivate the teacher first.';
 
@@ -536,23 +525,26 @@ columns: TableColumn[] = [
 
     this.errorMessage = '';
 
-    this.successMessage = '';
-
-
     this.teacherService
       .deleteTeacher(teacher.id)
+      .pipe(
+        finalize(() => {
+          this.deleting = false;
+          this.cdr.detectChanges();
+        })
+      )
       .subscribe({
 
         next: () => {
-
-          this.deleting = false;
 
           this.showDeleteConfirm = false;
 
           this.selectedDeleteTeacher = null;
 
-          this.successMessage =
-            `Teacher ${teacher.firstName} ${teacher.lastName} deleted successfully.`;
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Teacher deleted successfully.'
+          });
 
           // Remove from current page immediately
           this.teachers =
@@ -570,35 +562,20 @@ columns: TableColumn[] = [
           this.cdr.detectChanges();
 
 
-          setTimeout(() => {
-
-            this.successMessage = '';
-
-            this.cdr.detectChanges();
-
-          }, 2500);
-
         },
 
 
         error: (error) => {
 
-          console.error(
-            'Failed to delete teacher:',
-            error
-          );
-
-          this.deleting = false;
-
           this.showDeleteConfirm = false;
 
           this.selectedDeleteTeacher = null;
 
-          this.errorMessage =
-            this.getBackendErrorMessage(
-              error,
-              'Failed to delete teacher.'
-            );
+          this.errorTitle = 'Unable to delete teacher';
+          this.errorMessage = this.getBackendErrorMessage(
+            error,
+            'Failed to delete teacher.'
+          );
 
           this.cdr.detectChanges();
 
@@ -703,10 +680,7 @@ columns: TableColumn[] = [
     }
 
 
-    return (
-      error?.message ||
-      defaultMessage
-    );
+    return defaultMessage;
 
   }
 

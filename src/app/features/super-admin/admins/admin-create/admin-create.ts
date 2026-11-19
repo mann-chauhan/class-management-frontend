@@ -13,20 +13,18 @@ import {
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
-import {
-  AdminService,
-  ApiResponse
-} from '../services/admin.service';
-
-import { Admin } from '../../../../core/models/admin.model';
+import { AdminService } from '../services/admin.service';
 import { CreateAdminRequest } from '../../../../core/models/create-admin.model';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 
 @Component({
   selector: 'app-admin-create',
   standalone: true,
 imports: [
-  ReactiveFormsModule
+  ReactiveFormsModule,
+  InlineFeedbackComponent
 ],
   templateUrl: './admin-create.html',
   styleUrl: './admin-create.scss'
@@ -37,10 +35,10 @@ export class AdminCreateComponent {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   saving = false;
   error = '';
-  success = '';
 
   readonly adminForm = this.fb.nonNullable.group({
     email: ['', [
@@ -63,7 +61,11 @@ export class AdminCreateComponent {
   });
 
   save(): void {
-    if (this.adminForm.invalid || this.saving) {
+    if (this.saving) {
+      return;
+    }
+
+    if (this.adminForm.invalid) {
       this.adminForm.markAllAsTouched();
       return;
     }
@@ -85,7 +87,6 @@ export class AdminCreateComponent {
 
     this.saving = true;
     this.error = '';
-    this.success = '';
 
     const request: CreateAdminRequest = {
       email,
@@ -102,9 +103,11 @@ export class AdminCreateComponent {
         })
       )
       .subscribe({
-        next: (response: ApiResponse<Admin>) => {
-          this.success =
-            response.message || 'Admin created successfully.';
+        next: () => {
+          this.feedbackService.show({
+            kind: 'success',
+            message: 'Admin created successfully.'
+          });
 
           this.adminForm.reset();
 

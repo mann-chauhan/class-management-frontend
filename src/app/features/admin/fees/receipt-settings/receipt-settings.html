@@ -41,17 +41,11 @@
 
   <!-- ERROR -->
   @if (!loading && errorMessage) {
-    <section class="alert alert-error">
-      {{ errorMessage }}
-    </section>
-  }
-
-
-  <!-- SUCCESS -->
-  @if (successMessage) {
-    <section class="alert alert-success">
-      {{ successMessage }}
-    </section>
+    <app-inline-feedback
+      kind="error"
+      title="Receipt settings action failed"
+      [message]="errorMessage"
+      announcementPriority="polite" />
   }
 
 

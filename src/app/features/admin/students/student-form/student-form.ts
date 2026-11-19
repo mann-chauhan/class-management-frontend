@@ -75,6 +75,9 @@ import { BranchService } from '../../academic/branches/services/branch.service';
 
 import { FeeStructureService } from '../../fees/services/fee-structure.service';
 import { FeeStructure } from '../../fees/models/fee-structure.model';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
+import { ConfirmationDialogComponent } from '../../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 
 
 @Component({
@@ -83,7 +86,9 @@ import { FeeStructure } from '../../fees/models/fee-structure.model';
 
   imports: [
     CommonModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    InlineFeedbackComponent,
+    ConfirmationDialogComponent
   ],
 
   templateUrl: './student-form.html',
@@ -147,6 +152,9 @@ export class StudentForm implements OnInit {
   private readonly feeStructureService =
     inject(FeeStructureService);
 
+  private readonly feedbackService =
+    inject(ActionFeedbackService);
+
 
   // =========================================================
   // STATE
@@ -163,8 +171,6 @@ export class StudentForm implements OnInit {
   errorMessages: string[] = [];
 
   errorMessage = '';
-
-  successMessage = '';
 
   feeStructure: FeeStructure | null = null;
 
@@ -195,6 +201,8 @@ export class StudentForm implements OnInit {
   initialPerformanceNotice = '';
 
   private acceptedSchoolId: number | null = null;
+  schoolChangeDialogOpen = false;
+  pendingSchoolId: number | null = null;
 
   boardMedia: BoardMedium[] = [];
 
@@ -319,26 +327,41 @@ export class StudentForm implements OnInit {
     this.acceptedSchoolId = this.studentForm.get('schoolId')?.value ?? null;
     this.studentForm.get('schoolId')?.valueChanges.subscribe(value => {
       const nextSchoolId = value == null ? null : Number(value);
+      if (this.schoolChangeDialogOpen) {
+        return;
+      }
       if (this.initialPerformanceRecords.length === 0 || nextSchoolId === this.acceptedSchoolId) {
         this.acceptedSchoolId = nextSchoolId;
         this.initialPerformanceNotice = '';
         return;
       }
 
-      const confirmed = window.confirm(
-        "Changing the student's school will also change the school associated with all pending initial exam records. Continue?"
-      );
-      if (confirmed) {
-        this.acceptedSchoolId = nextSchoolId;
-        this.initialPerformanceNotice = nextSchoolId === null
-          ? 'Select the student\'s school before submitting the pending exam records.'
-          : '';
-      } else {
-        this.studentForm.get('schoolId')?.setValue(this.acceptedSchoolId, { emitEvent: false });
-      }
+      this.pendingSchoolId = nextSchoolId;
+      this.studentForm.get('schoolId')?.setValue(this.acceptedSchoolId, { emitEvent: false });
+      this.schoolChangeDialogOpen = true;
       this.cdr.detectChanges();
     });
 
+  }
+
+  cancelSchoolChange(): void {
+    if (!this.schoolChangeDialogOpen) return;
+    this.studentForm.get('schoolId')?.setValue(this.acceptedSchoolId, { emitEvent: false });
+    this.pendingSchoolId = null;
+    this.schoolChangeDialogOpen = false;
+    this.cdr.detectChanges();
+  }
+
+  confirmSchoolChange(): void {
+    if (!this.schoolChangeDialogOpen) return;
+    this.acceptedSchoolId = this.pendingSchoolId;
+    this.studentForm.get('schoolId')?.setValue(this.acceptedSchoolId, { emitEvent: false });
+    this.initialPerformanceNotice = this.pendingSchoolId === null
+      ? 'Select the student\'s school before submitting the pending exam records.'
+      : '';
+    this.pendingSchoolId = null;
+    this.schoolChangeDialogOpen = false;
+    this.cdr.detectChanges();
   }
 
   private loadEditFormState(): void {
@@ -1001,13 +1024,22 @@ export class StudentForm implements OnInit {
 
   onSubmit(): void {
 
+    if (this.saving) {
+      return;
+    }
+
     this.clearMessages();
 
 
     // Validate form
     if (!this.validateInitialPerformanceSchool() || this.studentForm.invalid) {
 
+      this.errorMessages = [
+        'Please fix the highlighted fields before saving.'
+      ];
+      this.errorMessage = this.errorMessages[0];
       this.studentForm.markAllAsTouched();
+      this.cdr.detectChanges();
 
       return;
     }
@@ -1125,13 +1157,12 @@ export class StudentForm implements OnInit {
 next: () => {
   this.saving = false;
 
+  this.showSaveSuccess('Student created successfully.');
+
   if (this.popupMode) {
     this.saved.emit();
     return;
   }
-
-  this.successMessage = 'Student created successfully.';
-  this.cdr.detectChanges();
 
   setTimeout(() => {
     this.router.navigate(['/admin/students']);
@@ -1139,12 +1170,6 @@ next: () => {
 },
 
         error: (error) => {
-
-          console.error(
-            'Failed to create student:',
-          );
-
-
           this.handleError(
             error,
             'Failed to create student.'
@@ -1260,10 +1285,7 @@ next: () => {
 
           this.saving = false;
 
-          this.successMessage =
-            'Student updated successfully.';
-
-          this.cdr.detectChanges();
+          this.showSaveSuccess('Student updated successfully.');
 
           if (this.popupMode) {
             this.saved.emit();
@@ -1283,12 +1305,6 @@ next: () => {
         },
 
         error: (error) => {
-
-          console.error(
-            'Failed to update student:',
-          );
-
-
           this.handleError(
             error,
             'Failed to update student.'
@@ -1309,10 +1325,6 @@ next: () => {
     error: any,
     defaultMessage: string
   ): void {
-
-console.error('Backend error:');
-
-
     this.errorMessages = [];
 
 
@@ -1355,7 +1367,8 @@ console.error('Backend error:');
           // -----------------------------------------------
 
           if (
-            item?.message
+            typeof item?.message === 'string' &&
+            item.message.trim()
           ) {
 
             this.errorMessages.push(
@@ -1377,8 +1390,9 @@ console.error('Backend error:');
           // -----------------------------------------------
 
           if (
-            item?.field &&
-            item?.defaultMessage
+            typeof item?.field === 'string' &&
+            typeof item?.defaultMessage === 'string' &&
+            item.defaultMessage.trim()
           ) {
 
             this.errorMessages.push(
@@ -1400,8 +1414,9 @@ console.error('Backend error:');
           // -----------------------------------------------
 
           if (
-            item?.field &&
-            item?.message
+            typeof item?.field === 'string' &&
+            typeof item?.message === 'string' &&
+            item.message.trim()
           ) {
 
             this.errorMessages.push(
@@ -1411,18 +1426,6 @@ console.error('Backend error:');
             return;
           }
 
-
-          // -----------------------------------------------
-          // Fallback
-          // -----------------------------------------------
-
-          if (item != null) {
-
-            this.errorMessages.push(
-              JSON.stringify(item)
-            );
-
-          }
 
         }
       );
@@ -1440,9 +1443,9 @@ console.error('Backend error:');
     ) {
 
       const message =
-        backendError?.message ||
-        error?.message ||
-        defaultMessage;
+        typeof backendError?.message === 'string' && backendError.message.trim()
+          ? backendError.message
+          : defaultMessage;
 
 
       this.errorMessages.push(
@@ -1469,6 +1472,14 @@ console.error('Backend error:');
 
   }
 
+  private showSaveSuccess(message: string): void {
+    this.feedbackService.show({
+      kind: 'success',
+      message,
+      persistAcrossNavigation: !this.popupMode
+    });
+  }
+
 
   // =========================================================
   // CLEAR MESSAGES
@@ -1479,8 +1490,6 @@ console.error('Backend error:');
     this.errorMessages = [];
 
     this.errorMessage = '';
-
-    this.successMessage = '';
 
   }
 

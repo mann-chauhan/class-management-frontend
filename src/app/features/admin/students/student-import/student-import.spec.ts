@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Observable, firstValueFrom, of, throwError } from 'rxjs';
+import { Observable, Subject, firstValueFrom, of, throwError } from 'rxjs';
 
 import { AcademicYearService } from '../../academic/academic-years/services/academic-year.service';
 import { BoardMediumService } from '../../academic/board-media/services/board-medium.service';
@@ -13,6 +13,7 @@ import {
   StudentService
 } from '../services/student.service';
 import { StudentImportComponent } from './student-import';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
 
 describe('StudentImportComponent MAP candidate pagination', () => {
   let fixture: ComponentFixture<StudentImportComponent>;
@@ -21,6 +22,7 @@ describe('StudentImportComponent MAP candidate pagination', () => {
   let boardMediumService: { getAll: ReturnType<typeof vi.fn> };
   let schoolService: { getAll: ReturnType<typeof vi.fn> };
   let academicYearService: { getAll: ReturnType<typeof vi.fn> };
+  let studentService: { importStudents: ReturnType<typeof vi.fn> };
 
   const page = <T>(content: T[], number: number, totalPages: number) => ({
     content,
@@ -61,11 +63,12 @@ describe('StudentImportComponent MAP candidate pagination', () => {
     boardMediumService = { getAll: vi.fn() };
     schoolService = { getAll: vi.fn() };
     academicYearService = { getAll: vi.fn() };
+    studentService = { importStudents: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [StudentImportComponent],
       providers: [
-        { provide: StudentService, useValue: {} },
+        { provide: StudentService, useValue: studentService },
         { provide: BranchService, useValue: branchService },
         { provide: BoardMediumService, useValue: boardMediumService },
         { provide: SchoolService, useValue: schoolService },
@@ -73,6 +76,7 @@ describe('StudentImportComponent MAP candidate pagination', () => {
         { provide: ClassService, useValue: {} },
         { provide: SectionService, useValue: {} },
         { provide: FeeStructureService, useValue: {} }
+        ,{ provide: ActionFeedbackService, useValue: { show: vi.fn() } }
       ]
     }).compileComponents();
 
@@ -175,5 +179,74 @@ describe('StudentImportComponent MAP candidate pagination', () => {
     expect(boardMediumService.getAll.mock.calls.map(call => call[0])).toEqual([
       0, 1, 0, 1
     ]);
+  });
+
+  it('shows one success feedback and renders completed import results', () => {
+    const feedback = TestBed.inject(ActionFeedbackService) as unknown as { show: ReturnType<typeof vi.fn> };
+    component.selectedFile = new File(['xlsx'], 'students.xlsx');
+    component.validationResult = { validRows: 2, errorRows: 0, errors: [], preview: {
+      branches: [], boardMedia: [], schools: [], academicYears: [], classes: [], sections: [], feeStructures: [], resolutionIssues: []
+    } } as any;
+    studentService.importStudents.mockReturnValue(of({ data: { importedStudents: 2, skippedStudents: 0, students: [] } }));
+
+    component.importFile();
+    fixture.detectChanges();
+
+    expect(studentService.importStudents).toHaveBeenCalledTimes(1);
+    expect(feedback.show).toHaveBeenCalledWith({ kind: 'success', message: '2 student(s) imported successfully.' });
+    expect(fixture.nativeElement.textContent).toContain('2 student(s) imported successfully.');
+  });
+
+  it('shows warning feedback for partial results and preserves the result area', () => {
+    const feedback = TestBed.inject(ActionFeedbackService) as unknown as { show: ReturnType<typeof vi.fn> };
+    component.selectedFile = new File(['xlsx'], 'students.xlsx');
+    component.validationResult = { validRows: 1, errorRows: 0, errors: [], preview: {
+      branches: [], boardMedia: [], schools: [], academicYears: [], classes: [], sections: [], feeStructures: [], resolutionIssues: []
+    } } as any;
+    studentService.importStudents.mockReturnValue(of({ data: { importedStudents: 1, skippedStudents: 2, students: [{ name: 'Student', email: 'student@example.com', temporaryPassword: 'temp' }] } }));
+
+    component.importFile();
+    fixture.detectChanges();
+
+    expect(feedback.show).toHaveBeenCalledWith({ kind: 'warning', message: '1 student(s) imported; 2 skipped.' });
+    expect(component.importResult?.skippedStudents).toBe(2);
+    expect(fixture.nativeElement.textContent).toContain('Import complete');
+  });
+
+  it('renders an inline error and releases importing state after a rejected import', () => {
+    component.selectedFile = new File(['xlsx'], 'students.xlsx');
+    component.validationResult = { validRows: 1, errorRows: 0, errors: [], preview: {
+      branches: [], boardMedia: [], schools: [], academicYears: [], classes: [], sections: [], feeStructures: [], resolutionIssues: []
+    } } as any;
+    studentService.importStudents.mockReturnValue(throwError(() => ({ error: { message: 'Import failed' } })));
+
+    component.importFile();
+    fixture.detectChanges();
+
+    expect(component.importing).toBe(false);
+    expect(fixture.nativeElement.querySelector('app-inline-feedback')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('Import failed');
+  });
+
+  it('shows the import busy state and blocks duplicate submissions until completion', () => {
+    const pending = new Subject<unknown>();
+    component.selectedFile = new File(['xlsx'], 'students.xlsx');
+    component.validationResult = { validRows: 1, errorRows: 0, errors: [], preview: {
+      branches: [], boardMedia: [], schools: [], academicYears: [], classes: [], sections: [], feeStructures: [], resolutionIssues: []
+    } } as any;
+    studentService.importStudents.mockReturnValue(pending.asObservable());
+
+    component.importFile();
+    component.importFile();
+    fixture.detectChanges();
+
+    expect(studentService.importStudents).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.textContent).toContain('Importing...');
+    expect((fixture.nativeElement.querySelector('.import-button') as HTMLButtonElement).disabled).toBe(true);
+
+    pending.error({ error: { message: 'Retryable import failure' } });
+    fixture.detectChanges();
+    expect(component.importing).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Retryable import failure');
   });
 });

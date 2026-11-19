@@ -9,6 +9,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { SearchInputComponent } from '../../../../shared/components/search-input/search-input.component';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 import {
   Assignment,
@@ -28,8 +29,9 @@ type DueFilter =
   standalone: true,
 
   imports: [
-    CommonModule,
-  FormsModule,
+  CommonModule,
+    FormsModule,
+    InlineFeedbackComponent,
     SearchInputComponent
   ],
 
@@ -79,6 +81,10 @@ export class StudentAssignmentsComponent implements OnInit {
 
   loadAssignments(): void {
 
+    if (this.loading) {
+      return;
+    }
+
     this.loading = true;
 
     this.errorMessage = '';
@@ -97,12 +103,7 @@ export class StudentAssignmentsComponent implements OnInit {
           this.cdr.detectChanges();
         },
 
-        error: (error) => {
-
-          console.error(
-            'Failed to load student assignments:',
-            error
-          );
+        error: () => {
 
           this.errorMessage =
             'Failed to load assignments.';

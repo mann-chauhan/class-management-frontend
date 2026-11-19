@@ -11,6 +11,8 @@ import {
   TableAction,
   TableColumn
 } from '../../../../shared/components/data-table/data-table.component';
+import { ActionFeedbackService } from '../../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 @Component({
   selector: 'app-subjects',
@@ -19,7 +21,8 @@ imports: [
   CommonModule,
   FormsModule,
   ConfirmationDialogComponent,
-  DataTableComponent
+  DataTableComponent,
+  InlineFeedbackComponent
 ],
   templateUrl: './subjects.html',
   styleUrl: './subjects.scss'
@@ -28,6 +31,7 @@ export class SubjectsComponent implements OnInit {
   private readonly subjectService = inject(SubjectService);
   private readonly classService = inject(ClassService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   searchTerm = '';
   classFilter: number | 'ALL' = 'ALL';
@@ -68,6 +72,7 @@ actions: TableAction[] = [
 
   loading = false;
   saving = false;
+  deleting = false;
   errorMessage = '';
   // DELETE CONFIRMATION
 
@@ -181,6 +186,10 @@ subjectToDelete: Subject | null = null;
   }
 
   saveSubject(): void {
+    if (this.saving) {
+      return;
+    }
+
     const name = this.form.name.trim();
     const code = this.form.code.trim();
 
@@ -201,13 +210,16 @@ subjectToDelete: Subject | null = null;
       this.subjectService
         .updateSubject(this.editingSubject.id, request)
         .subscribe({
-          next: () => {
+          next: response => {
             this.saving = false;
+            this.feedbackService.show({
+              kind: 'success',
+              message: response.message || 'Subject updated successfully.'
+            });
             this.closeForm();
             this.loadSubjects();
           },
           error: error => {
-            console.error('Failed to update subject:', error);
             this.errorMessage =
               error?.error?.message || 'Failed to update subject.';
             this.saving = false;
@@ -219,13 +231,16 @@ subjectToDelete: Subject | null = null;
     }
 
     this.subjectService.createSubject(request).subscribe({
-      next: () => {
+      next: response => {
         this.saving = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: response.message || 'Subject created successfully.'
+        });
         this.closeForm();
         this.loadSubjects();
       },
       error: error => {
-        console.error('Failed to create subject:', error);
         this.errorMessage =
           error?.error?.message || 'Failed to create subject.';
         this.saving = false;
@@ -251,10 +266,11 @@ cancelDeleteSubject(): void {
 confirmDeleteSubject(): void {
   const subject = this.subjectToDelete;
 
-  if (!subject) {
+  if (!subject || this.deleting) {
     return;
   }
 
+  this.deleting = true;
   this.showDeleteDialog = false;
   this.subjectToDelete = null;
 
@@ -263,16 +279,17 @@ confirmDeleteSubject(): void {
   this.subjectService
     .deleteSubject(subject.id)
     .subscribe({
-      next: () => {
+      next: response => {
+        this.deleting = false;
+        this.feedbackService.show({
+          kind: 'success',
+          message: response.message || 'Subject deleted successfully.'
+        });
         this.loadSubjects();
       },
 
       error: error => {
-        console.error(
-          'Failed to delete subject:',
-          error
-        );
-
+        this.deleting = false;
         this.errorMessage =
           error?.error?.message ||
           'Failed to delete subject.';

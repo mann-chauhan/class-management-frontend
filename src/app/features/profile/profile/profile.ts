@@ -10,6 +10,8 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
 import { AuthStateService } from '../../../core/auth/auth-state.service';
+import { ActionFeedbackService } from '../../../core/services/action-feedback.service';
+import { InlineFeedbackComponent } from '../../../shared/components/inline-feedback/inline-feedback.component';
 import {
   ProfileService,
   Profile,
@@ -21,7 +23,8 @@ import {
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    InlineFeedbackComponent
   ],
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
@@ -33,6 +36,7 @@ export class ProfileComponent {
   private readonly authStateService = inject(AuthStateService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly router = inject(Router);
+  private readonly feedbackService = inject(ActionFeedbackService);
 
   readonly closeProfile = output<void>();
 
@@ -45,7 +49,6 @@ export class ProfileComponent {
   newPassword = '';
   confirmPassword = '';
 
-  successMessage = '';
   errorMessage = '';
 
   ngOnInit(): void {
@@ -92,7 +95,10 @@ export class ProfileComponent {
 
   changePassword(): void {
 
-    this.successMessage = '';
+    if (this.saving) {
+      return;
+    }
+
     this.errorMessage = '';
 
     if (!this.currentPassword || !this.newPassword) {
@@ -131,7 +137,7 @@ export class ProfileComponent {
 
     this.profileService.changePassword(request).subscribe({
 
-      next: (response) => {
+      next: () => {
 
         this.saving = false;
 
@@ -139,9 +145,10 @@ export class ProfileComponent {
         this.newPassword = '';
         this.confirmPassword = '';
 
-        this.successMessage =
-          response?.message ||
-          'Password changed successfully.';
+        this.feedbackService.show({
+          kind: 'success',
+          message: 'Password changed successfully.'
+        });
 
         this.cdr.markForCheck();
       },
@@ -150,9 +157,7 @@ export class ProfileComponent {
 
         this.saving = false;
 
-        this.errorMessage =
-          error?.error?.message ||
-          'Failed to change password.';
+        this.errorMessage = 'Failed to change password.';
 
         this.cdr.markForCheck();
       }

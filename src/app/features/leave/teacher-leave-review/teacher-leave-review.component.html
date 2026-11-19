@@ -9,7 +9,6 @@
     </div>
   </div>
 
-  @if (success) { <div class="notice success" role="status">{{ success }}</div> }
   @if (permissionsError) { <app-error-state title="Unable to load leave permissions" [description]="permissionsError"
     (actionClick)="ngOnInit()"></app-error-state> }
 
@@ -127,7 +126,7 @@
       </div>
       <div class="detail-status"><app-status-badge [label]="selected.status"
           [variant]="statusVariant(selected.status)"></app-status-badge></div>@if (decisionError) { <div
-        class="notice error" role="alert">{{ decisionError }}</div> }<div class="detail-grid">
+        ><app-inline-feedback kind="error" title="Unable to update leave request" [message]="decisionError" announcementPriority="polite" /></div> }<div class="detail-grid">
         <div class="detail-block">
           <h3>Student</h3>
           <p>{{ selected.applicantName || 'Student #' + selected.studentId }}</p>

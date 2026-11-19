@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 import { ApiService } from '../../../../core/services/api.service';
 import { PermissionService } from '../../../../core/auth/permission.service';
 import { AdvertisementDisplayComponent } from '../../../../shared/components/advertisement-display/advertisement-display.component';
+import { InlineFeedbackComponent } from '../../../../shared/components/inline-feedback/inline-feedback.component';
 
 
 interface ApiResponse<T> {
@@ -90,7 +91,7 @@ interface TeacherAttendanceRecord {
 @Component({
   selector: 'app-teacher-dashboard',
   standalone: true,
-  imports: [AdvertisementDisplayComponent],
+  imports: [AdvertisementDisplayComponent, InlineFeedbackComponent],
   templateUrl: './teacher-dashboard.html',
   styleUrl: './teacher-dashboard.scss'
 })
@@ -128,11 +129,21 @@ export class TeacherDashboard implements OnInit {
   // STATE
   // =========================================================
 
-  loading = false;
+  permissionsLoading = false;
+  assignmentsLoading = false;
+  assignmentRecordsLoading = false;
+  attendanceLoading = false;
 
-  errorMessage = '';
+  permissionsError = '';
+  assignmentsError = '';
+  assignmentRecordsError = '';
+  attendanceError = '';
+  private permissionsLoaded = false;
 
-  attendanceErrorMessage = '';
+  get loading(): boolean {
+    return this.permissionsLoading || this.assignmentsLoading ||
+      this.assignmentRecordsLoading || this.attendanceLoading;
+  }
 
 
   // =========================================================
@@ -152,53 +163,44 @@ export class TeacherDashboard implements OnInit {
 
   loadDashboard(): void {
 
-    this.loading = true;
+    this.loadPermissions(true);
 
-    this.errorMessage = '';
+  }
 
-    this.attendanceErrorMessage = '';
+  private loadPermissions(loadDashboardData: boolean): void {
+    if (this.permissionsLoading) {
+      return;
+    }
 
+    this.permissionsLoading = true;
+    this.permissionsError = '';
 
-    this.permissionService
-      .loadMyPermissions()
-      .subscribe({
+    this.permissionService.loadMyPermissions().subscribe({
+      next: () => {
+        this.permissionsLoaded = true;
+        this.permissionsLoading = false;
+        this.changeDetectorRef.detectChanges();
 
-
-
-        next: () => {
-
-          this.loadAssignments();
-
+        if (loadDashboardData) {
+          if (this.canViewAssignments()) {
+            this.loadAssignments();
+          }
           this.loadTeacherAssignments();
-
           if (this.canViewAttendance()) {
             this.loadAttendance();
           }
-
-          this.loading = false;
-
-          this.changeDetectorRef.detectChanges();
-
-        },
-
-        error: (error: unknown) => {
-
-          console.error(
-            'Failed to load teacher permissions:',
-            error
-          );
-
-          this.errorMessage =
-            'Unable to load your dashboard permissions. Please try again.';
-
-          this.loading = false;
-
-          this.changeDetectorRef.detectChanges();
-
         }
-
-      });
-
+      },
+      error: () => {
+        this.permissionsLoading = false;
+        if (!this.permissionsLoaded) {
+          this.permissionsLoaded = false;
+        }
+        this.permissionsError =
+          'Unable to load dashboard permissions. Please try again.';
+        this.changeDetectorRef.detectChanges();
+      }
+    });
   }
 
 
@@ -207,6 +209,13 @@ export class TeacherDashboard implements OnInit {
   // =========================================================
 
   private loadAssignments(): void {
+
+    if (this.assignmentsLoading) {
+      return;
+    }
+
+    this.assignmentsLoading = true;
+    this.assignmentsError = '';
 
     this.api
       .get<ApiResponse<TeacherAssignment[]>>(
@@ -219,19 +228,15 @@ export class TeacherDashboard implements OnInit {
           this.assignments =
             response?.data ?? [];
 
+          this.assignmentsLoading = false;
           this.changeDetectorRef.detectChanges();
 
         },
 
-        error: (error: unknown) => {
-
-          console.error(
-            'Failed to load teacher assignments:',
-            error
-          );
-
-          this.assignments = [];
-
+        error: () => {
+          this.assignmentsLoading = false;
+          this.assignmentsError =
+            'Unable to load assignments. Please try again.';
           this.changeDetectorRef.detectChanges();
 
         }
@@ -247,6 +252,13 @@ export class TeacherDashboard implements OnInit {
 
   private loadTeacherAssignments(): void {
 
+    if (this.assignmentRecordsLoading) {
+      return;
+    }
+
+    this.assignmentRecordsLoading = true;
+    this.assignmentRecordsError = '';
+
     this.api
       .get<ApiResponse<TeacherAssignmentRecord[]>>(
         '/teacher-assignments/my-teacher-assignments'
@@ -258,19 +270,15 @@ export class TeacherDashboard implements OnInit {
           this.teacherAssignments =
             response?.data ?? [];
 
+          this.assignmentRecordsLoading = false;
           this.changeDetectorRef.detectChanges();
 
         },
 
-        error: (error: unknown) => {
-
-          console.error(
-            'Failed to load teacher assignment records:',
-            error
-          );
-
-          this.teacherAssignments = [];
-
+        error: () => {
+          this.assignmentRecordsLoading = false;
+          this.assignmentRecordsError =
+            'Unable to load assignment records. Please try again.';
           this.changeDetectorRef.detectChanges();
 
         }
@@ -286,6 +294,13 @@ export class TeacherDashboard implements OnInit {
 
   private loadAttendance(): void {
 
+    if (this.attendanceLoading) {
+      return;
+    }
+
+    this.attendanceLoading = true;
+    this.attendanceError = '';
+
     this.api
       .get<ApiResponse<TeacherAttendanceRecord[]>>(
         '/attendance/teacher'
@@ -297,24 +312,15 @@ export class TeacherDashboard implements OnInit {
           this.attendanceRecords =
             response?.data ?? [];
 
-          this.attendanceErrorMessage = '';
-
+          this.attendanceLoading = false;
           this.changeDetectorRef.detectChanges();
 
         },
 
-        error: (error: unknown) => {
-
-          console.error(
-            'Failed to load teacher attendance:',
-            error
-          );
-
-          this.attendanceRecords = [];
-
-          this.attendanceErrorMessage =
-            'Unable to load attendance information.';
-
+        error: () => {
+          this.attendanceLoading = false;
+          this.attendanceError =
+            'Unable to load attendance information. Please try again.';
           this.changeDetectorRef.detectChanges();
 
         }
@@ -426,8 +432,29 @@ export class TeacherDashboard implements OnInit {
 
   canViewAttendance(): boolean {
 
+    if (!this.permissionsLoaded) {
+      return false;
+    }
+
     return this.permissionService.hasPermission(
       'ATTENDANCE_VIEW'
+    );
+
+  }
+
+
+  // =========================================================
+  // ASSIGNMENT VIEW PERMISSION
+  // =========================================================
+
+  canViewAssignments(): boolean {
+
+    if (!this.permissionsLoaded) {
+      return false;
+    }
+
+    return this.permissionService.hasPermission(
+      'ASSIGNMENT_VIEW'
     );
 
   }
@@ -532,6 +559,25 @@ export class TeacherDashboard implements OnInit {
   retry(): void {
 
     this.loadDashboard();
+
+  }
+
+  retryPermissions(): void {
+    this.loadPermissions(true);
+  }
+
+  retryAssignments(): void {
+    this.loadAssignments();
+  }
+
+  retryAssignmentRecords(): void {
+    this.loadTeacherAssignments();
+  }
+
+  retryAttendance(): void {
+    if (this.canViewAttendance()) {
+      this.loadAttendance();
+    }
 
   }
 

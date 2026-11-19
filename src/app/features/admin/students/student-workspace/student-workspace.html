@@ -846,6 +846,53 @@
                 </button>
             </div>
 
+            <div class="school-performance-filters" aria-label="School performance filters">
+                <app-search-input
+                    class="school-performance-search"
+                    placeholder="Search exam names"
+                    [(ngModel)]="schoolPerformanceSearch"
+                    (searchChange)="onSchoolPerformanceSearch($event)">
+                </app-search-input>
+
+                <label>
+                    <span>School</span>
+                    <select [ngModel]="schoolPerformanceSchoolId"
+                        (ngModelChange)="onSchoolPerformanceSchoolChange($event)"
+                        [disabled]="schoolPerformanceSchoolsLoading">
+                        <option [ngValue]="null">All schools</option>
+                        @for (school of schoolPerformanceFilterSchools; track school.id) {
+                        <option [ngValue]="school.id">{{ school.name }}</option>
+                        }
+                    </select>
+                </label>
+
+                <label>
+                    <span>Sort by</span>
+                    <select [(ngModel)]="schoolPerformanceSortBy"
+                        (ngModelChange)="onSchoolPerformanceSortChange()">
+                        @for (option of schoolPerformanceSortOptions; track option.value) {
+                        <option [ngValue]="option.value">{{ option.label }}</option>
+                        }
+                    </select>
+                </label>
+
+                <label>
+                    <span>Direction</span>
+                    <select [(ngModel)]="schoolPerformanceSortDirection"
+                        (ngModelChange)="onSchoolPerformanceSortChange()">
+                        <option [ngValue]="'desc'">Descending</option>
+                        <option [ngValue]="'asc'">Ascending</option>
+                    </select>
+                </label>
+
+                @if (schoolPerformanceHasActiveFilters || schoolPerformanceSortBy !== 'examDate' || schoolPerformanceSortDirection !== 'desc') {
+                <button type="button" class="school-performance-clear-filters"
+                    (click)="clearSchoolPerformanceFilters()">
+                    Clear filters
+                </button>
+                }
+            </div>
+
             @if (schoolPerformanceLoading) {
             <div class="workspace-module-loading" aria-live="polite">
                 <div class="loading-spinner"></div>
@@ -893,11 +940,20 @@
             @if (!schoolPerformanceRecords.length) {
             <div class="module-placeholder school-performance-empty-state">
                 <div class="placeholder-icon">▣</div>
+                @if (schoolPerformanceHasActiveFilters) {
+                <h3>No matching school performance records</h3>
+                <p>Try changing or clearing the search and school filters.</p>
+                <button type="button" class="school-performance-clear-filters"
+                    (click)="clearSchoolPerformanceFilters()">
+                    Clear filters
+                </button>
+                } @else {
                 <h3>No school performance records</h3>
                 <p>Add a historical exam record to keep the student's external-school history together.</p>
                 <button type="button" class="school-performance-primary-action" (click)="openAddSchoolPerformance()">
                     Add First Record
                 </button>
+                }
             </div>
             } @else {
             <div class="school-performance-table-wrapper">
@@ -1049,9 +1105,8 @@
         <div class="student-payment-modal-body">
 
             @if (paymentEditErrorMessage) {
-            <div class="student-payment-error">
-                {{ paymentEditErrorMessage }}
-            </div>
+            <app-inline-feedback kind="error" title="Payment could not be updated"
+                [message]="paymentEditErrorMessage" announcementPriority="polite" />
             }
 
             <div class="student-payment-form-grid">
@@ -1230,7 +1285,8 @@
 
             @else if (receiptErrorMessage) {
             <div class="student-receipt-state student-receipt-error">
-                <p>{{ receiptErrorMessage }}</p>
+                <app-inline-feedback kind="error" title="Receipt could not be loaded"
+                    [message]="receiptErrorMessage" announcementPriority="polite" />
 
                 <button type="button" class="student-receipt-retry" (click)="closeReceiptPopup()">
                     Close
@@ -1409,8 +1465,9 @@
 
         <form class="school-performance-form" (ngSubmit)="saveSchoolPerformance()">
             @if (schoolPerformanceFormError) {
+            <app-inline-feedback kind="error" title="School performance could not be saved"
+                [message]="schoolPerformanceFormError" announcementPriority="polite" />
             <div class="school-performance-form-error" role="alert">
-                <span>{{ schoolPerformanceFormError }}</span>
                 @if (schoolPerformanceConflict) {
                 <button type="button" (click)="reloadSchoolPerformanceAfterConflict()">
                     Reload record
@@ -1484,3 +1541,20 @@
     </div>
 </div>
 }
+
+<app-confirmation-dialog
+  [visible]="schoolPerformanceDeleteDialogOpen"
+  [busy]="schoolPerformanceDeletingId !== null"
+  busyLabel="Deleting..."
+  title="Delete school performance record?"
+  [message]="'Delete the exam record “' + (schoolPerformanceDeleteRecord?.examName || '') + '”? This action cannot be undone.'"
+  confirmLabel="Delete"
+  cancelLabel="Cancel"
+  [danger]="true"
+  (confirmed)="confirmDeleteSchoolPerformance()"
+  (cancelled)="cancelDeleteSchoolPerformance()">
+  @if (schoolPerformanceDeleteError) {
+    <app-inline-feedback kind="error" title="School performance could not be deleted"
+      [message]="schoolPerformanceDeleteError" announcementPriority="polite" />
+  }
+</app-confirmation-dialog>

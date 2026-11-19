@@ -271,23 +271,31 @@
     </div>
 
     <!-- ===================================================
-     SUCCESS
-     =================================================== -->
-    @if (successMessage) {
-    <div class="success-state">
-      ✓ {{ successMessage }}
-    </div>
-    }
-
-    <!-- ===================================================
          ERROR
          =================================================== -->
     @if (errorMessage) {
 
-    <div class="error-state">
-      {{ errorMessage }}
-    </div>
+    <app-inline-feedback
+      kind="error"
+      title="Student list action needs attention"
+      [message]="errorMessage"
+      announcementPriority="polite" />
 
+    }
+
+    @if (importSuccessMessage) {
+    <div class="success-state">
+      ✓ {{ importSuccessMessage }}
+    </div>
+    }
+
+    @if (bulkFeedbackMessage) {
+      <app-inline-feedback
+        kind="warning"
+        title="Bulk action outcome"
+        [message]="bulkFeedbackMessage"
+        [partial]="bulkFeedbackPartial"
+        announcementPriority="polite" />
     }
 
     <!-- ===================================================
@@ -528,7 +536,8 @@
        CONFIRMATION DIALOG
        ===================================================== -->
   <app-confirmation-dialog [visible]="showConfirmationDialog" [title]="confirmationTitle"
-    [message]="confirmationMessage" [confirmLabel]="confirmationConfirmLabel" cancelLabel="Cancel" [danger]="true"
+    [message]="confirmationMessage" [confirmLabel]="confirmationConfirmLabel"
+    [cancelLabel]="confirmationCancelLabel" [danger]="true"
     (confirmed)="confirmAction()" (cancelled)="cancelConfirmation()">
   </app-confirmation-dialog>
 
@@ -577,9 +586,11 @@
             [attr.aria-invalid]="bulkDeleteError ? 'true' : null" />
 
           @if (bulkDeleteError) {
-            <div class="bulk-delete-error" role="alert">
-              {{ bulkDeleteError }}
-            </div>
+            <app-inline-feedback
+              kind="error"
+              title="Unable to delete students"
+              [message]="bulkDeleteError"
+              announcementPriority="polite" />
           }
         </div>
 
@@ -761,6 +772,14 @@
 
       <!-- BODY -->
       <div class="bulk-edit-body">
+
+        @if (bulkEditError) {
+          <app-inline-feedback
+            kind="error"
+            title="Unable to update students"
+            [message]="bulkEditError"
+            announcementPriority="polite" />
+        }
 
         @if (bulkEditStep === 'edit') {
 
