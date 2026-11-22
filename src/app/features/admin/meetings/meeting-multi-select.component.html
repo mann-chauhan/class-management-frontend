@@ -1,0 +1,46 @@
+<div class="multi-select" [class.is-open]="open" [class.is-disabled]="locked || controlDisabled || loading">
+  <div class="multi-select-label-row">
+    <span class="multi-select-label">{{ label }}</span>
+    <span class="multi-select-count" *ngIf="selectedIds.length">{{ selectedIds.length }} selected</span>
+  </div>
+  <button #trigger type="button" class="multi-select-trigger"
+    [attr.aria-label]="label" [attr.aria-controls]="panelId" aria-haspopup="listbox" [attr.aria-expanded]="open" [disabled]="locked || controlDisabled || loading" (click)="toggle()"
+    (keydown)="onTriggerKeydown($event)">
+    <span class="multi-select-summary" [class.placeholder]="!selectedIds.length">{{ selectedSummary }}</span>
+    <span class="multi-select-chevron" [class.is-open]="open" aria-hidden="true">⌄</span>
+  </button>
+  <p class="multi-select-helper" *ngIf="helperText">{{ helperText }}</p>
+  <p class="multi-select-state" *ngIf="loading" role="status">Loading options…</p>
+  <p class="multi-select-state error" *ngIf="error" role="alert">{{ error }}</p>
+  <div class="multi-select-panel" *ngIf="open" [id]="panelId" role="dialog" [attr.aria-label]="label + ' options'"
+    [style.top.px]="panelPosition?.top" [style.left.px]="panelPosition?.left" [style.width.px]="panelPosition?.width"
+    (click)="$event.stopPropagation()">
+    <div class="multi-select-panel-header">
+      <strong>{{ label }}</strong>
+      <button type="button" class="multi-select-close" aria-label="Close options" (click)="close(true)">×</button>
+    </div>
+    <div class="multi-select-search-row">
+      <input #searchInput type="search" [value]="search" (input)="search = $any($event.target).value"
+        (keydown)="onSearchKeydown($event)"
+        placeholder="Search options" [attr.aria-label]="'Search ' + label" />
+      <div class="multi-select-actions">
+        <button type="button" class="multi-select-action" *ngIf="filteredOptions.length" (click)="selectAllVisible($event)">Select visible</button>
+        <button type="button" class="multi-select-action multi-select-clear" *ngIf="selectedIds.length" (click)="clear($event)">Clear</button>
+      </div>
+    </div>
+    <div class="multi-select-selected" *ngIf="selectedOptions.length" aria-label="Selected options">
+      <button type="button" class="multi-select-chip" *ngFor="let option of selectedOptions" (click)="remove(option.id, $event)">
+        {{ option.name }} <span aria-hidden="true">×</span><span class="sr-only">Remove {{ option.name }}</span>
+      </button>
+    </div>
+    <div class="multi-select-options" role="listbox" aria-multiselectable="true">
+      <button type="button" class="multi-select-option" role="option" *ngFor="let option of filteredOptions; let index = index"
+        [attr.aria-selected]="selectedIds.includes(option.id)" (click)="toggleOption(option.id)"
+        (keydown)="onOptionKeydown($event, index)">
+        <span class="multi-select-checkbox" aria-hidden="true">{{ selectedIds.includes(option.id) ? '✓' : '' }}</span>
+        <span>{{ option.name }}</span>
+      </button>
+      <p class="multi-select-empty" *ngIf="!filteredOptions.length">No matching options.</p>
+    </div>
+  </div>
+</div>

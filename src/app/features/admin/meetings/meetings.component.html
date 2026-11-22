@@ -1,0 +1,491 @@
+<header class="meetings-hero">
+  <div class="meetings-hero-image">
+    <img src="/assets/images/meeting.png" alt="Meetings management illustration" />
+  </div>
+  <div class="meetings-hero-content">
+    <app-page-header title="Meetings" description="Manage parent and teacher meetings." />
+  </div>
+</header>
+
+<main class="meetings-page">
+  <div class="tabs" role="tablist" aria-label="Meeting type">
+    <button type="button" role="tab" id="meeting-tab-parent" aria-controls="meeting-panel-parent"
+      [attr.aria-selected]="activeTab === 'PARENT'" [attr.tabindex]="activeTab === 'PARENT' ? 0 : -1"
+      [class.active]="activeTab === 'PARENT'" (click)="switchTab('PARENT')" (keydown)="onTabKeydown($event)">Parent
+      Meetings</button>
+    <button type="button" role="tab" id="meeting-tab-teacher" aria-controls="meeting-panel-teacher"
+      [attr.aria-selected]="activeTab === 'TEACHER'" [attr.tabindex]="activeTab === 'TEACHER' ? 0 : -1"
+      [class.active]="activeTab === 'TEACHER'" (click)="switchTab('TEACHER')" (keydown)="onTabKeydown($event)">Teacher
+      Meetings</button>
+  </div>
+
+  <section class="overall-summary" aria-labelledby="overall-summary-title">
+    <div class="summary-heading">
+      <div>
+        <h2 id="overall-summary-title">Overall meeting summary</h2>
+        <p>Totals across all Parent and Teacher meetings.</p>
+      </div>
+    </div>
+    <div class="summary" aria-label="Overall meeting summary values">
+      <div class="summary-card"><span>Total Meetings</span><strong>{{ overallSummary?.totalMeetings ?? '—'
+          }}</strong></div>
+      <div class="summary-card"><span>Upcoming</span><strong>{{ overallSummary?.upcomingMeetings ?? '—' }}</strong>
+      </div>
+      <div class="summary-card"><span>Completed</span><strong>{{ overallSummary?.completedMeetings ?? '—'
+          }}</strong></div>
+      <div class="summary-card"><span>Cancelled</span><strong>{{ overallSummary?.cancelledMeetings ?? '—'
+          }}</strong></div>
+    </div>
+  </section>
+
+  <section class="tab-panel" role="tabpanel" [id]="panelId(activeTab)" [attr.aria-labelledby]="tabId(activeTab)">
+    <section class="toolbar" aria-label="Meeting filters">
+      <label class="search-field">Search meetings
+        <input type="search" [value]="state().search" (input)="onSearch($any($event.target).value)"
+          placeholder="Title or venue" />
+      </label>
+      <label>Lifecycle
+        <select [(ngModel)]="state().lifecycle" (change)="onFilterChange()">
+          <option value="">All statuses</option>
+          <option value="SCHEDULED">Scheduled</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+      </label>
+      <label>From <input type="date" [(ngModel)]="state().fromDate" (change)="onFilterChange()" /></label>
+      <label>To <input type="date" [(ngModel)]="state().toDate" (change)="onFilterChange()" /></label>
+      <button type="button" class="secondary" (click)="resetFilters()">Reset</button>
+      <button type="button" class="primary" (click)="openCreate()">Add {{ activeTab === 'PARENT' ? 'Parent' : 'Teacher'
+        }}
+        Meeting</button>
+    </section>
+    <div class="active-filters" *ngIf="hasActiveFilters()" role="status">
+      Showing filtered results.
+      <button type="button" class="link-button" (click)="resetFilters()">Clear filters</button>
+    </div>
+
+    <app-inline-feedback *ngIf="pageError" kind="error" title="Meetings" [message]="pageError" />
+    <app-inline-feedback *ngIf="pageSuccess" kind="success" title="Meetings" [message]="pageSuccess" />
+    <app-inline-feedback *ngIf="state().error" kind="error" title="Meetings" [message]="state().error" />
+    <app-loading *ngIf="state().loading" />
+
+    <section class="table-card" *ngIf="!state().loading">
+      <div *ngIf="!state().meetings.length" class="empty-state">
+        <h2>{{ hasActiveFilters() ? 'No meetings match your filters.' : 'No meetings created yet.' }}
+        </h2>
+        <p>{{ hasActiveFilters() ? 'Clear a filter or try a different search.' : 'Create a meeting to get started.' }}
+        </p>
+        <button *ngIf="hasActiveFilters()" type="button" class="secondary" (click)="resetFilters()">Clear
+          filters</button>
+        <button *ngIf="!hasActiveFilters()" type="button" class="primary" (click)="openCreate()">Add Meeting</button>
+      </div>
+      <div class="table-wrap" *ngIf="state().meetings.length">
+        <table>
+          <caption class="sr-only">{{ activeTab === 'PARENT' ? 'Parent' : 'Teacher' }} meetings</caption>
+          <thead>
+            <tr>
+              <th>Meeting</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Venue</th>
+              <th>Participants</th>
+              <th>Attendance</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let meeting of state().meetings">
+              <td><button class="link-button" type="button" (click)="view(meeting)">{{ meeting.title }}</button></td>
+              <td>{{ date(meeting.meetingDate) }}</td>
+              <td>{{ time(meeting.startTime) }}<span *ngIf="meeting.endTime"> – {{ time(meeting.endTime) }}</span></td>
+              <td>{{ meeting.venue }}</td>
+              <td>{{ meeting.totalParticipants }}</td>
+              <td><span class="attendance-count">{{ meeting.presentCount }} present · {{ meeting.absentCount }}
+                  absent</span></td>
+              <td><span class="status-group"><span class="badge" [class]="meeting.lifecycleStatus.toLowerCase()">{{
+                    label(meeting.lifecycleStatus) }}</span><span class="submission-status"
+                    [class.submitted]="meeting.attendanceSubmissionStatus === 'SUBMITTED'"
+                    [class.draft]="meeting.attendanceSubmissionStatus === 'DRAFT'">Attendance: {{
+                    label(meeting.attendanceSubmissionStatus) }}</span></span></td>
+              <td class="actions"><button type="button" aria-label="View details"
+                  (click)="view(meeting)">View</button><button type="button" *ngIf="canEdit(meeting)"
+                  (click)="openEdit(meeting)">Edit</button><button type="button" *ngIf="canCancel(meeting)"
+                  (click)="askCancel(meeting)">Cancel</button><button type="button" *ngIf="canComplete(meeting)"
+                  (click)="askComplete(meeting)">Complete</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <app-pagination *ngIf="state().total > pageSize" [currentPage]="state().page + 1" [pageSize]="pageSize"
+        [totalItems]="state().total" (pageChange)="onPageChange($event)" />
+    </section>
+  </section>
+</main>
+
+<div class="modal-backdrop" *ngIf="showForm" (click)="closeForm()">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="meeting-form-title" tabindex="-1" cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="false" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div>
+        <span class="modal-kicker">{{ editing ? 'Meeting workspace' : (activeTab === 'PARENT' ? 'Parent audience' : 'Teacher audience') }}</span>
+        <h2 id="meeting-form-title">{{ editing ? 'Edit Meeting' : 'Add ' + (activeTab === 'PARENT' ? 'Parent' : 'Teacher')
+          + ' Meeting' }}</h2>
+        <p>{{ editing ? 'Update the meeting details and schedule.' : 'Set the details, audience and schedule in a few simple steps.' }}</p>
+      </div>
+      <button type="button" class="close" (click)="closeForm()" aria-label="Close meeting form">×</button>
+    </header>
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate
+      [attr.aria-describedby]="formError ? 'meeting-form-error' : null">
+      <div class="form-scroll">
+        <section class="form-section meeting-details-section" aria-labelledby="meeting-details-heading">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Step 1</span>
+              <h3 id="meeting-details-heading">Meeting details</h3>
+              <p>Give administrators and participants the essential context.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+          <label>Meeting title *<input formControlName="title" [class.invalid-control]="isInvalid(form.controls.title)"
+              [attr.aria-invalid]="isInvalid(form.controls.title)"
+              [attr.aria-describedby]="isInvalid(form.controls.title) ? 'meeting-title-error' : null" /><small
+              id="meeting-title-error" class="field-error" *ngIf="isInvalid(form.controls.title)">Enter a meeting
+              title.</small></label>
+          <label class="wide">Description<textarea formControlName="description" rows="3"></textarea></label>
+          </div>
+        </section>
+        <section class="form-section schedule-section" aria-labelledby="meeting-schedule-heading">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Step 2</span>
+              <h3 id="meeting-schedule-heading">Schedule and venue</h3>
+              <p>Choose when and where this meeting will take place.</p>
+            </div>
+          </div>
+          <div class="form-grid schedule-grid">
+            <label>Date *<input type="date" formControlName="meetingDate"
+                [class.invalid-control]="isInvalid(form.controls.meetingDate)"
+                [attr.aria-invalid]="isInvalid(form.controls.meetingDate)"
+                [attr.aria-describedby]="isInvalid(form.controls.meetingDate) ? 'meeting-date-error' : null" /><small
+                id="meeting-date-error" class="field-error" *ngIf="isInvalid(form.controls.meetingDate)">Choose a meeting
+                date.</small></label>
+            <label>Start time *<input type="time" formControlName="startTime"
+                [class.invalid-control]="isInvalid(form.controls.startTime)"
+                [attr.aria-invalid]="isInvalid(form.controls.startTime)"
+                [attr.aria-describedby]="isInvalid(form.controls.startTime) ? 'meeting-start-error' : null" /><small
+                id="meeting-start-error" class="field-error" *ngIf="isInvalid(form.controls.startTime)">Choose a start
+                time.</small></label>
+            <label>End time<input type="time" formControlName="endTime" /></label>
+            <label>Venue *<input formControlName="venue" [class.invalid-control]="isInvalid(form.controls.venue)"
+                [attr.aria-invalid]="isInvalid(form.controls.venue)"
+                [attr.aria-describedby]="isInvalid(form.controls.venue) ? 'meeting-venue-error' : null" /><small
+                id="meeting-venue-error" class="field-error" *ngIf="isInvalid(form.controls.venue)">Enter a
+                venue.</small></label>
+          </div>
+        </section>
+        <fieldset class="form-section audience-section" *ngIf="!editing">
+          <legend><span class="section-kicker">Step 3</span><span>{{ activeTab === 'PARENT' ? 'Audience selection' : 'Teacher audience' }}</span></legend>
+          <p class="audience-guidance" *ngIf="activeTab === 'TEACHER' || audienceMode === 'CRITERIA'">Choose optional filters to narrow the audience. Leave a filter empty to include
+            everyone matching the other selections.</p>
+          <div class="audience-options-error" *ngIf="audienceOptionsError" role="alert">
+            <span>{{ audienceOptionsError }}</span>
+            <button type="button" class="secondary" (click)="retryAudienceOptions()">Retry</button>
+          </div>
+          <p class="options-loading" *ngIf="optionsLoading" role="status">Loading audience options…</p>
+          <p class="hint" *ngIf="activeTab === 'TEACHER' || audienceMode === 'CRITERIA'">Leave optional selections empty to include all matching active {{ activeTab === 'PARENT' ?
+            'students' : 'teachers' }}.</p>
+          <div class="audience-mode" *ngIf="activeTab === 'PARENT'">
+            <span class="audience-mode-label">Audience selection</span>
+            <label class="mode-option"><input type="radio" name="meetingAudienceMode" [checked]="audienceMode === 'CRITERIA'"
+                (change)="setAudienceMode('CRITERIA')" /> Criteria filters</label>
+            <label class="mode-option"><input type="radio" name="meetingAudienceMode" [checked]="audienceMode === 'INDIVIDUAL_STUDENTS'"
+                (change)="setAudienceMode('INDIVIDUAL_STUDENTS')" /> Individually selected students</label>
+          </div>
+          <div class="form-grid" *ngIf="activeTab === 'PARENT' && audienceMode === 'CRITERIA'">
+            <label>Academic Year *<select formControlName="academicYearId" (change)="onAcademicYearChange()">
+                <option [ngValue]="null">Select academic year</option>
+                <option *ngFor="let option of academicYears" [ngValue]="option.id">{{ option.name }}</option>
+              </select></label>
+            <label>Class *<select formControlName="classId" (change)="onClassChange()">
+                <option [ngValue]="null">Select class</option>
+                <option *ngFor="let option of classes" [ngValue]="option.id">{{ option.name }}</option>
+              </select></label>
+            <app-meeting-multi-select formControlName="sectionIds" label="Sections" placeholder="All sections"
+              [helperText]="form.controls.classId.value ? 'Optional; leave empty for all sections.' : 'Select a class first to choose sections.'"
+              [options]="sections" [locked]="!form.controls.classId.value" [loading]="optionsLoading"
+              (valueChange)="onCriteriaAudienceChanged()" />
+            <app-meeting-multi-select formControlName="schoolIds" label="Schools" placeholder="All schools"
+              [options]="schools" [loading]="optionsLoading" (valueChange)="onCriteriaAudienceChanged()" />
+            <app-meeting-multi-select formControlName="branchIds" label="Branches" placeholder="All branches"
+              [options]="branches" [loading]="optionsLoading" (valueChange)="onCriteriaAudienceChanged()" />
+            <app-meeting-multi-select formControlName="boardMediumIds" label="Board / Medium"
+              placeholder="All boards / media" [options]="boards" [loading]="optionsLoading"
+              (valueChange)="onCriteriaAudienceChanged()" />
+          </div>
+          <div class="individual-audience" *ngIf="activeTab === 'PARENT' && audienceMode === 'INDIVIDUAL_STUDENTS'">
+            <p class="audience-guidance">Add one scope for each academic-year/class combination. Leave sections empty to
+              include all sections in that class.</p>
+            <div class="scope-list">
+              <article class="scope-card" *ngFor="let scope of audienceScopes; let index = index">
+                <div class="scope-card-header">
+                  <strong>Scope {{ index + 1 }}</strong>
+                  <button type="button" class="link-button" *ngIf="audienceScopes.length > 1"
+                    (click)="removeAudienceScope(index)">Remove scope</button>
+                </div>
+                <div class="form-grid">
+                  <label>Academic Year *<select [ngModel]="scope.academicYearId" [ngModelOptions]="{standalone: true}"
+                      (ngModelChange)="onAudienceScopeYearChange(index, $event)">
+                      <option [ngValue]="null">Select academic year</option>
+                      <option *ngFor="let option of academicYears" [ngValue]="option.id">{{ option.name }}</option>
+                    </select></label>
+                  <label>Class *<select [ngModel]="scope.classId" [ngModelOptions]="{standalone: true}"
+                      (ngModelChange)="onAudienceScopeClassChange(index, $event)" [disabled]="scope.academicYearId === null">
+                      <option [ngValue]="null">Select class</option>
+                      <option *ngFor="let option of availableClasses(scope)" [ngValue]="option.id">{{ option.name }}</option>
+                    </select></label>
+                  <app-meeting-multi-select class="wide" label="Sections" placeholder="All sections"
+                    [helperText]="scope.classId ? 'Optional; leave empty for all sections.' : 'Select a class first.'"
+                    [options]="scope.sections" [ngModel]="scope.sectionIds" [ngModelOptions]="{standalone: true}"
+                    [locked]="scope.classId === null" [loading]="scope.sectionsLoading" [error]="scope.sectionsError"
+                    (valueChange)="onAudienceScopeSectionsChange(index, $event)" />
+                </div>
+              </article>
+            </div>
+            <button type="button" class="secondary add-scope" (click)="addAudienceScope()">Add another scope</button>
+            <div class="student-search-panel">
+              <div class="student-search-header">
+                <div>
+                  <h3>Find students</h3>
+                  <p class="hint">Search is limited to the scopes above. Selections stay when you change pages or filters.</p>
+                </div>
+                <span class="selection-count">{{ selectedStudentCount() }} selected</span>
+              </div>
+              <label class="student-search-field">Search students
+                <input type="search" [ngModel]="studentSearch" [ngModelOptions]="{standalone: true}"
+                  (ngModelChange)="onStudentSearch($event)" placeholder="Name or roll number" />
+              </label>
+              <p class="student-search-state" *ngIf="studentSearchLoading" role="status">Loading students…</p>
+              <div class="student-search-error" *ngIf="studentSearchError" role="alert">{{ studentSearchError }}</div>
+              <p class="student-search-empty" *ngIf="!studentSearchLoading && !studentSearchError && !studentResults.length">No eligible students match the current scopes and search.</p>
+              <div class="student-results" *ngIf="!studentSearchLoading && studentResults.length">
+                <article class="student-result" *ngFor="let student of studentResults">
+                  <div class="student-result-summary">
+                    <strong>{{ student.name }}</strong>
+                    <span>{{ student.rollNumber || 'No roll number' }}</span>
+                  </div>
+                  <div class="student-result-action">
+                    <label *ngIf="student.eligibleEnrollments.length > 1">Enrollment
+                      <select [ngModel]="enrollmentChoice(student.studentId)" [ngModelOptions]="{standalone: true}"
+                        (ngModelChange)="chooseEnrollment(student.studentId, $event ? +$event : null)"
+                        [disabled]="isStudentSelected(student.studentId)">
+                        <option [ngValue]="null">Choose enrollment</option>
+                        <option *ngFor="let enrollment of student.eligibleEnrollments" [ngValue]="enrollment.enrollmentId">
+                          {{ enrollment.academicYearName }} · {{ enrollment.className }}<span *ngIf="enrollment.sectionName"> · {{ enrollment.sectionName }}</span>
+                        </option>
+                      </select>
+                    </label>
+                    <span class="enrollment-summary" *ngIf="student.eligibleEnrollments.length === 1">
+                      {{ student.eligibleEnrollments[0].academicYearName }} · {{ student.eligibleEnrollments[0].className }}<span *ngIf="student.eligibleEnrollments[0].sectionName"> · {{ student.eligibleEnrollments[0].sectionName }}</span>
+                    </span>
+                    <button type="button" class="secondary" (click)="addStudent(student)" [disabled]="isStudentSelected(student.studentId)">
+                      {{ isStudentSelected(student.studentId) ? 'Selected' : 'Add' }}
+                    </button>
+                  </div>
+                </article>
+              </div>
+              <app-pagination *ngIf="studentTotal > studentPageSize" [currentPage]="studentPage + 1"
+                [pageSize]="studentPageSize" [totalItems]="studentTotal" (pageChange)="onStudentPageChange($event)" />
+            </div>
+            <div class="selected-students" *ngIf="selectedStudents.length">
+              <div class="student-search-header"><h3>Selected students</h3><span class="selection-count">{{ selectedStudentCount() }} selected</span></div>
+              <div class="selected-student-list">
+                <div class="selected-student" *ngFor="let student of selectedStudents" [class.invalid-selection]="selectedStudentIsOutOfScope(student)">
+                  <div><strong>{{ student.name }}</strong><span>{{ student.enrollment.academicYearName }} · {{ student.enrollment.className }}<span *ngIf="student.enrollment.sectionName"> · {{ student.enrollment.sectionName }}</span></span>
+                    <small *ngIf="selectedStudentIsOutOfScope(student)">This enrollment is no longer in the selected scopes.</small></div>
+                  <button type="button" class="link-button" (click)="removeStudent(student.studentId)">Remove</button>
+                </div>
+              </div>
+            </div>
+            <p class="field-error" *ngIf="studentSelectionError" role="alert">{{ studentSelectionError }}</p>
+            <p class="field-error" *ngIf="invalidSelectedStudentCount" role="alert">{{ invalidSelectedStudentCount }} selected student(s) no longer match the current scopes.</p>
+          </div>
+          <div class="form-grid" *ngIf="activeTab === 'TEACHER'">
+            <p class="audience-guidance wide">Teacher filters combine together. Selecting teachers narrows the eligible
+              active teachers further within the selected branch and board/medium filters.</p>
+            <app-meeting-multi-select formControlName="branchIds" label="Branches" placeholder="All branches"
+              [options]="branches" [loading]="optionsLoading" (valueChange)="onCriteriaAudienceChanged()" />
+            <app-meeting-multi-select formControlName="boardMediumIds" label="Board / Medium"
+              placeholder="All boards / media" [options]="boards" [loading]="optionsLoading"
+              (valueChange)="onCriteriaAudienceChanged()" />
+            <app-meeting-multi-select formControlName="teacherIds" label="Teachers" placeholder="All active teachers"
+              [options]="teachers" [loading]="optionsLoading" (valueChange)="onCriteriaAudienceChanged()" />
+          </div>
+          <div class="preview-summary" aria-live="polite">
+            <div class="section-heading preview-heading">
+              <div>
+                <span class="section-kicker">Step 4</span>
+                <h3>Audience preview</h3>
+                <p>Confirm the current audience before creating the meeting.</p>
+              </div>
+            </div>
+            <div class="preview loading" *ngIf="previewState === 'loading'">Updating audience preview...</div>
+            <div class="preview success" *ngIf="previewState === 'success' && previewCount !== null && previewCount > 0">
+              {{ previewCount }} {{ activeTab === 'PARENT' && audienceMode === 'INDIVIDUAL_STUDENTS' ? 'selected students' :
+              ('active ' + (activeTab === 'PARENT' ? 'students' : 'teachers')) }} will be included.
+            </div>
+            <div class="preview warning" *ngIf="previewState === 'success' && previewCount === 0">
+              No {{ activeTab === 'PARENT' && audienceMode === 'INDIVIDUAL_STUDENTS' ? 'selected students' :
+              ('active ' + (activeTab === 'PARENT' ? 'students' : 'teachers')) }} match the selected {{ audienceMode === 'INDIVIDUAL_STUDENTS' ? 'audience' : 'criteria' }}. Review your
+              selections.
+            </div>
+            <div class="preview error" *ngIf="previewState === 'error'" role="alert">
+              {{ previewError }} <button type="button" class="link-button" (click)="retryPreview()">Retry</button>
+            </div>
+          </div>
+        </fieldset>
+        <div class="form-error" id="meeting-form-error" role="alert" *ngIf="formError">{{ formError }}</div>
+      </div>
+      <footer>
+        <p class="submit-readiness" *ngIf="!editing && !previewReady" role="status">{{ previewReadinessMessage }}</p>
+        <button type="button" class="secondary" (click)="closeForm()">Cancel</button><button type="submit"
+          class="primary" [disabled]="saving || optionsLoading || (!editing && (previewLoading || !previewReady))">{{ saving ? 'Saving…' : (editing ? 'Save changes' :
+          'Create meeting') }}</button>
+      </footer>
+    </form>
+  </section>
+</div>
+
+<div class="modal-backdrop" *ngIf="showDetails" (click)="closeDetails()">
+  <section class="modal details" role="dialog" aria-modal="true" aria-labelledby="meeting-details-title" tabindex="-1"
+    cdkTrapFocus [cdkTrapFocusAutoCapture]="false" (click)="$event.stopPropagation()">
+    <header>
+      <h2 id="meeting-details-title">Meeting details</h2><button type="button" class="close" (click)="closeDetails()"
+        aria-label="Close meeting details">×</button>
+    </header>
+    <div class="details-body">
+      <app-loading *ngIf="!selectedMeeting && !detailError" />
+      <app-inline-feedback *ngIf="detailError" kind="error" title="Meeting details" [message]="detailError" />
+      <div class="detail-grid" *ngIf="selectedMeeting">
+        <div><span>Type</span><strong>{{ label(selectedMeeting.meetingType) }}</strong></div>
+        <div><span>Title</span><strong>{{ selectedMeeting.title }}</strong></div>
+        <div><span>Date</span><strong>{{ date(selectedMeeting.meetingDate) }}</strong></div>
+        <div><span>Time</span><strong>{{ time(selectedMeeting.startTime) }} – {{ time(selectedMeeting.endTime)
+            }}</strong>
+        </div>
+        <div><span>Venue</span><strong>{{ selectedMeeting.venue }}</strong></div>
+        <div><span>Status</span><strong class="status-group"><span class="badge"
+              [class]="selectedMeeting.lifecycleStatus.toLowerCase()">Lifecycle: {{
+              label(selectedMeeting.lifecycleStatus) }}</span><span class="submission-status"
+              [class.submitted]="selectedMeeting.attendanceSubmissionStatus === 'SUBMITTED'"
+              [class.draft]="selectedMeeting.attendanceSubmissionStatus === 'DRAFT'">Attendance: {{
+              label(selectedMeeting.attendanceSubmissionStatus) }}</span></strong></div>
+        <div><span>Participants</span><strong>{{ selectedMeeting.totalParticipants }}</strong></div>
+        <div><span>Attendance</span><strong>{{ selectedMeeting.presentCount }} present · {{ selectedMeeting.absentCount
+            }}
+            absent · {{ selectedMeeting.unreviewedCount }} unreviewed</strong></div>
+        <div class="wide"><span>Description</span><strong>{{ selectedMeeting.description || 'No description' }}</strong>
+        </div>
+      </div>
+      <section class="attendance-section" *ngIf="selectedMeeting" aria-labelledby="attendance-title">
+        <header class="attendance-header">
+          <div>
+            <h3 id="attendance-title">Attendance</h3>
+            <p>{{ selectedMeeting.presentCount }} present · {{ selectedMeeting.absentCount }} absent · {{
+              selectedMeeting.unreviewedCount }} not reviewed</p>
+          </div>
+          <div class="attendance-actions" *ngIf="canManageAttendance()"><button type="button" class="secondary"
+              [disabled]="attendanceBusy" (click)="askBulk('PRESENT')">Mark everyone present</button><button
+              type="button" class="secondary" [disabled]="attendanceBusy" (click)="askBulk('ABSENT')">Mark everyone
+              absent</button><button type="button" class="primary" [disabled]="attendanceBusy || !canSubmitAttendance()"
+              (click)="askSubmitAttendance()">Submit attendance</button></div>
+        </header>
+        <p class="read-only-notice" *ngIf="attendanceReadOnlyReason()" role="status">{{ attendanceReadOnlyReason() }}
+        </p>
+        <div class="eligibility-hint" *ngIf="attendanceSubmissionHint()" role="status">
+          <span>{{ attendanceSubmissionHint() }}</span>
+          <span *ngIf="eligibilityRefreshLoading">Refreshing eligibility…</span>
+          <button *ngIf="eligibilityRefreshError && !eligibilityRefreshLoading" type="button" class="link-button"
+            (click)="retryEligibilityRefresh()">Retry</button>
+        </div>
+        <app-inline-feedback *ngIf="attendanceError" kind="error" title="Attendance" [message]="attendanceError" />
+        <app-inline-feedback *ngIf="attendanceMessage" kind="success" title="Attendance"
+          [message]="attendanceMessage" />
+        <div class="participant-toolbar"><label>Search participants<input type="search" [value]="participantSearch"
+              (input)="onParticipantSearch($any($event.target).value)"
+              placeholder="Name or identifier" /></label><label>Status<select [(ngModel)]="participantStatus"
+              (change)="onParticipantFilterChange()">
+              <option value="">All statuses</option>
+              <option value="PRESENT">Present</option>
+              <option value="ABSENT">Absent</option>
+            </select></label><label>Review<select [(ngModel)]="participantReviewed"
+              (change)="onParticipantFilterChange()">
+              <option value="">All participants</option>
+              <option value="true">Reviewed</option>
+              <option value="false">Not reviewed</option>
+            </select></label></div>
+        <app-inline-feedback *ngIf="participantsError" kind="error" title="Participants"
+          [message]="participantsError" />
+        <app-loading *ngIf="participantsLoading" />
+        <p class="empty-state" *ngIf="!participantsLoading && !participants.length">No participants match the current
+          filters.</p>
+        <div class="table-wrap" *ngIf="!participantsLoading && participants.length">
+          <table>
+            <caption class="sr-only">Meeting participants</caption>
+            <thead>
+              <tr>
+                <th>Participant</th>
+                <th>Identifier</th>
+                <th *ngIf="selectedMeeting.meetingType === 'PARENT'">Class / Section</th>
+                <th *ngIf="selectedMeeting.meetingType === 'PARENT'">Academic year</th>
+                <th *ngIf="selectedMeeting.meetingType === 'TEACHER'">Branch / Board</th>
+                <th>Attendance</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let participant of participants">
+                <td>{{ participant.displayName }}</td>
+                <td>{{ participant.identifier || '—' }}</td>
+                <td *ngIf="selectedMeeting.meetingType === 'PARENT'">{{ participant.className || '—' }} / {{
+                  participant.sectionName || '—' }}</td>
+                <td *ngIf="selectedMeeting.meetingType === 'PARENT'">{{ participant.academicYear || '—' }}</td>
+                <td *ngIf="selectedMeeting.meetingType === 'TEACHER'">{{ participant.branchName || '—' }} / {{
+                  participant.boardMediumName || '—' }}</td>
+                <td><span class="badge"
+                    [class]="participant.reviewed ? participant.attendanceStatus.toLowerCase() : 'unreviewed'">{{
+                    participantStatusLabel(participant) }}</span></td>
+                <td class="actions" *ngIf="canManageAttendance()"><button type="button" [disabled]="attendanceBusy"
+                    (click)="markAttendance(participant, 'PRESENT')">Present</button><button type="button"
+                    [disabled]="attendanceBusy" (click)="markAttendance(participant, 'ABSENT')">Absent</button></td>
+                <td *ngIf="!canManageAttendance()">Read-only</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <app-pagination *ngIf="participantTotal > participantPageSize" [currentPage]="participantPage + 1"
+          [pageSize]="participantPageSize" [totalItems]="participantTotal"
+          (pageChange)="onParticipantPageChange($event)" />
+      </section>
+    </div>
+  </section>
+</div>
+
+<app-confirmation-dialog [visible]="!!meetingToCancel" title="Cancel meeting"
+  [message]="'Cancel ' + (meetingToCancel?.title || 'this meeting') + '? Historical participant records are preserved.'"
+  confirmLabel="Cancel meeting" (confirmed)="confirmCancel()" (cancelled)="closeAction()" [busy]="actionBusy" />
+<app-confirmation-dialog [visible]="!!meetingToComplete" title="Complete meeting"
+  [message]="'Mark ' + (meetingToComplete?.title || 'this meeting') + ' as completed?'" confirmLabel="Complete meeting"
+  (confirmed)="confirmComplete()" (cancelled)="closeAction()" [busy]="actionBusy" />
+<div class="bulk-confirmation-layer">
+  <app-confirmation-dialog [visible]="!!bulkStatus" title="Update complete roster"
+    [message]="'Mark every participant in this meeting, including participants on other pages, as ' + (bulkStatus === 'PRESENT' ? 'present' : 'absent') + '? This does not submit attendance.'"
+    [confirmLabel]="bulkStatus === 'PRESENT' ? 'Mark everyone present' : 'Mark everyone absent'" [danger]="false"
+    (confirmed)="confirmBulk()" (cancelled)="closeBulk()" [busy]="attendanceBusy" />
+</div>
+<div class="submit-confirmation-layer">
+  <app-confirmation-dialog [visible]="submitAttendancePending" title="Submit attendance"
+    message="Submit attendance for this meeting? Submission finalizes the attendance record and prevents further editing."
+    [danger]="false" confirmLabel="Submit attendance" (confirmed)="confirmSubmitAttendance()"
+    (cancelled)="closeSubmitAttendance()" [busy]="attendanceBusy" />
+</div>

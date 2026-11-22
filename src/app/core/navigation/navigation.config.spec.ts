@@ -35,3 +35,14 @@ describe('NAVIGATION_CONFIG teacher permissions', () => {
     expect(nonTeacherItems.every(item => !item.requiredPermission)).toBe(true);
   });
 });
+
+describe('NAVIGATION_CONFIG admin meetings', () => {
+  it('contains one admin Meetings entry without inventing a permission', () => {
+    const items = NAVIGATION_CONFIG['ADMIN'].flatMap(section => section.items)
+      .filter(item => item.route === '/admin/meetings');
+
+    expect(items).toHaveLength(1);
+    expect(items[0].label).toBe('Meetings');
+    expect(items[0].requiredPermission).toBeUndefined();
+  });
+});

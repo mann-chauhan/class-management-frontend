@@ -110,6 +110,11 @@ export const NAVIGATION_CONFIG: Record<string, NavigationSection[]> = {
                     icon: '✓'
                 },
                 {
+                    label: 'Meetings',
+                    route: '/admin/meetings',
+                    icon: '◷'
+                },
+                {
                     label: 'Leave Requests',
                     route: '/admin/leave',
                     icon: '▣'
