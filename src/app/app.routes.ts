@@ -441,6 +441,14 @@ export const routes: Routes = [
       // -------------------- ATTENDANCE ---------------------
 
       {
+        path: 'admin/meetings',
+        loadComponent: () => import('./features/admin/meetings/meetings.component')
+          .then(m => m.MeetingsComponent),
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'], title: 'Meetings', description: 'Manage parent and teacher meetings.' }
+      },
+
+      {
         path: 'admin/attendance',
         component: AttendanceOverview,
         canActivate: [roleGuard],
