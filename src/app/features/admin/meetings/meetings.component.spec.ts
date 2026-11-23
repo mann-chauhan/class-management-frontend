@@ -1510,13 +1510,14 @@ describe('MeetingsComponent', () => {
     fixture.detectChanges();
     component.switchTab('TEACHER');
     component.openCreate();
-    component.form.patchValue({ title: 'Teacher meeting', meetingDate: '2026-12-10', startTime: '10:00', venue: 'Room 2', branchIds: [4], boardMediumIds: [5], teacherIds: [7] });
+    component.form.patchValue({ title: 'Teacher meeting', meetingDate: '2026-12-10', startTime: '10:00', venue: 'Room 2',
+      sectionIds: [9], schoolIds: [6], branchIds: [4], boardMediumIds: [5], teacherIds: [7] });
     component.requestPreview();
     component.submit();
 
     expect(meetings.create).toHaveBeenCalledWith(expect.objectContaining({
       meetingType: 'TEACHER',
-      audience: expect.objectContaining({ academicYearId: null, classId: null, branchIds: [4], boardMediumIds: [5], teacherIds: [7] })
+      audience: expect.objectContaining({ academicYearId: null, classId: null, sectionIds: [], schoolIds: [], branchIds: [4], boardMediumIds: [5], teacherIds: [7] })
     }));
   });
 
