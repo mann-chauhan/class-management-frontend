@@ -29,6 +29,7 @@ export interface PageResponse<T> {
 
 export interface MeetingCriteria {
   meetingType: MeetingType;
+  audienceMode?: 'CRITERIA';
   academicYearId?: number | null;
   classId?: number | null;
   sectionIds?: number[];
@@ -85,6 +86,15 @@ export interface IndividualStudentsAudience {
 
 export type MeetingAudience = CriteriaAudience | IndividualStudentsAudience;
 
+export interface IndividualStudentsCriteria {
+  meetingType: MeetingType;
+  audienceMode: 'INDIVIDUAL_STUDENTS';
+  scopes: MeetingAudienceScope[];
+  studentSelections: MeetingStudentSelection[];
+}
+
+export type MeetingAudienceCriteria = MeetingCriteria | IndividualStudentsCriteria;
+
 export interface Meeting {
   id: number;
   meetingType: MeetingType;
@@ -96,7 +106,7 @@ export interface Meeting {
   venue: string;
   lifecycleStatus: MeetingLifecycleStatus;
   attendanceSubmissionStatus: AttendanceSubmissionStatus;
-  audienceCriteria: MeetingCriteria;
+  audienceCriteria: MeetingAudienceCriteria;
   totalParticipants: number;
   presentCount: number;
   absentCount: number;
@@ -127,7 +137,7 @@ export interface AudiencePreviewResponse {
   meetingType: MeetingType;
   participantCount: number;
   empty: boolean;
-  criteria: MeetingCriteria;
+  criteria: MeetingAudienceCriteria;
 }
 
 export interface CreateMeetingRequest {

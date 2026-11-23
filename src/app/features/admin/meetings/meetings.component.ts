@@ -1110,7 +1110,8 @@ export class MeetingsComponent implements OnInit, OnDestroy {
       };
     }
     return { meetingType: type, audience: { academicYearId: type === 'PARENT' ? value.academicYearId : null,
-      classId: type === 'PARENT' ? value.classId : null, sectionIds: value.sectionIds ?? [], schoolIds: value.schoolIds ?? [],
+      classId: type === 'PARENT' ? value.classId : null, sectionIds: type === 'PARENT' ? value.sectionIds ?? [] : [],
+      schoolIds: type === 'PARENT' ? value.schoolIds ?? [] : [],
       branchIds: value.branchIds ?? [], boardMediumIds: value.boardMediumIds ?? [], teacherIds: type === 'TEACHER' ? value.teacherIds ?? [] : [] } };
   }
 
